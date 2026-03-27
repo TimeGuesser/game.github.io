@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>TimeGuesser — Угадай место и год</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'Roboto', sans-serif;
+        }
+        body {
+            margin: 0;
+            background: #1a2a2f;
+            color: #f0f3f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 12px;
+        }
+        .game-container {
+            max-width: 1400px;
+            width: 100%;
+            background: #2e3b3e;
+            border-radius: 2rem;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+        .game-header {
+            background: #1e2a2e;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid #3a4a4f;
+        }
+        .game-header h1 {
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.7rem;
+            background: linear-gradient(135deg, #f5b042, #e0892e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .game-header p {
+            margin: 0.3rem 0 0;
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+        .split-layout {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .photo-panel {
+            flex: 1.2;
+            min-width: 260px;
+            padding: 1.2rem;
+            background: #253538;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .image-card {
+            background: #1e2a2e;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            border: 1px solid #3f555a;
+        }
+        .image-title {
+            background: #2c4045;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+        .image-container {
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1a2427;
+            padding: 1rem;
+        }
+        .historical-img {
+            max-width: 100%;
+            max-height: 220px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+        .year-slider-area {
+            background: #1e2a2e;
+            padding: 0.8rem 1rem;
+            border-radius: 1.5rem;
+            border: 1px solid #3f555a;
+        }
+        .year-label {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            -webkit-appearance: none;
+            background: #5e7d86;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #f5b042;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 4px #ffd966;
+            border: none;
+        }
+        .year-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            text-align: center;
+            background: #101c1f;
+            border-radius: 2rem;
+            padding: 0.2rem;
+            margin-top: 8px;
+            color: #ffcd7e;
+        }
+        .score-board {
+            background: #1e2a2e;
+            border-radius: 1.5rem;
+            padding: 0.6rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            border: 1px solid #3f555a;
+        }
+        .total-score {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #ffb347;
+        }
+        .button-group {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 0.3rem;
+        }
+        button {
+            flex: 1;
+            background: #4e6b72;
+            border: none;
+            padding: 10px;
+            border-radius: 3rem;
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+        }
+        button.primary {
+            background: #e0892e;
+        }
+        button.primary:hover {
+            background: #f59e42;
+        }
+        button.secondary {
+            background: #2c5f66;
+        }
+        button.secondary:hover {
+            background: #3e7e88;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .feedback {
+            background: #101c1fcc;
+            backdrop-filter: blur(8px);
+            border-radius: 1rem;
+            padding: 0.7rem;
+            font-size: 0.8rem;
+            border-left: 4px solid #ffb347;
+        }
+        .map-panel {
+            flex: 1.8;
+            min-width: 280px;
+            height: 65vh;
+            min-height: 400px;
+            background: #1d2c2f;
+            position: relative;
+            border-left: 1px solid #3f555a;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+            background: #2a3b3f;
+        }
+        .legend {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.65);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            z-index: 1000;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+        @media (max-width: 700px) {
+            .split-layout { flex-direction: column; }
+            .map-panel { height: 50vh; min-height: 320px; border-left: none; border-top: 1px solid #3f555a; }
+            .photo-panel { padding: 1rem; }
+            .game-header h1 { font-size: 1.4rem; }
+        }
+        .marker-hint {
+            font-size: 11px;
+            text-align: center;
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+        .custom-div-icon, .green-marker {
+            background: none;
+            border: none;
+            font-size: 26px;
+            text-shadow: 0 0 3px black;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+        }
+        .green-marker { font-size: 28px; }
+        .leaflet-popup-content-wrapper {
+            background: #2c3e3f;
+            color: #f0f0f0;
+            border-radius: 12px;
+        }
+        .leaflet-popup-tip { background: #2c3e3f; }
+        .leaflet-control-attribution {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="game-header">
+        <h1>⏳ TIMEGUESSER</h1>
+        <p>Выбери на карте место, соответствующее фото, и укажи год</p>
+    </div>
+    <div class="split-layout">
+        <div class="photo-panel">
+            <div class="image-card">
+                <div class="image-title">📸 ИСТОРИЧЕСКОЕ ИЗОБРАЖЕНИЕ</div>
+                <div class="image-container">
+                    <img id="questionImage" class="historical-img" src="" alt="Историческое фото">
+                </div>
+            </div>
+
+            <div class="year-slider-area">
+                <div class="year-label">
+                    <span>🗓️ ВЫБЕРИТЕ ГОД</span>
+                    <span id="selectedYearDisplay">1950</span>
+                </div>
+                <input type="range" id="yearSlider" min="1850" max="2024" step="1" value="1950">
+                <div class="year-value" id="yearValue">1950</div>
+            </div>
+
+            <div class="score-board">
+                <span>🏆 ОБЩИЙ СЧЁТ</span>
+                <span class="total-score" id="totalScore">0</span>
+            </div>
+            <div class="score-board">
+                <span>📍 Вопрос <span id="currentQNumber">1</span>/<span id="totalQuestions">0</span></span>
+                <span>🎯 Очки: <strong id="lastPoints">—</strong></span>
+            </div>
+
+            <div class="button-group">
+                <button id="checkBtn" class="primary">✅ ПРОВЕРИТЬ</button>
+                <button id="nextBtn" class="secondary" disabled>➡️ СЛЕДУЮЩИЙ</button>
+            </div>
+
+            <div class="feedback" id="feedbackArea">
+                ⚡ Кликни на карте, чтобы отметить место.<br>
+                🎚️ Двигай ползунок года, затем «Проверить».
+            </div>
+            <div class="marker-hint">
+                🔵 Ваш выбор &nbsp;|&nbsp; 🟢 Правильный ответ (после проверки)
+            </div>
+        </div>
+
+        <div class="map-panel">
+            <div id="map"></div>
+            <div class="legend">🗺️ Карта России • кликни для выбора</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---------- ИЗОБРАЖЕНИЯ ВСТРОЕННЫЕ (гарантированно загружаются) ----------
+        const QUESTIONS = [
+            { 
+                imageSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="100%" height="100%" fill="#2c4a5c"/><rect x="150" y="70" width="100" height="100" fill="#c98f4a"/><circle cx="200" cy="90" r="25" fill="#f5b042"/><text x="200" y="190" text-anchor="middle" fill="#ffcd7e" font-size="22" font-weight="bold">Красная площадь</text><text x="200" y="225" text-anchor="middle" fill="#b0c4ce" font-size="14">Москва, ~1905 г.</text></svg>`,
+                correctLat: 55.7537, correctLng: 37.6199, correctYear: 1905,
+                description: "Красная площадь, Москва, начало XX века"
+            },
+            { 
+                imageSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="100%" height="100%" fill="#2c4a5c"/><rect x="100" y="80" width="200" height="90" fill="#bf8f6f"/><text x="200" y="140" text-anchor="middle" fill="#ffd966" font-size="40">🏛️</text><text x="200" y="200" text-anchor="middle" fill="#ffcd7e" font-size="20" font-weight="bold">Невский проспект</text><text x="200" y="235" text-anchor="middle" fill="#b0c4ce" font-size="14">Санкт-Петербург, ~1910 г.</text></svg>`,
+                correctLat: 59.9343, correctLng: 30.3061, correctYear: 1910,
+                description: "Невский проспект, Санкт-Петербург"
+            },
+            { 
+                imageSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="100%" height="100%" fill="#2c4a5c"/><rect x="70" y="90" width="260" height="70" fill="#6b8e9b"/><text x="200" y="135" text-anchor="middle" fill="white" font-size="42">🚂</text><text x="200" y="190" text-anchor="middle" fill="#ffcd7e" font-size="20" font-weight="bold">Вокзал Владивостока</text><text x="200" y="225" text-anchor="middle" fill="#b0c4ce" font-size="14">~1995 г.</text></svg>`,
+                correctLat: 43.1155, correctLng: 131.8855, correctYear: 1995,
+                description: "Железнодорожный вокзал Владивостока"
+            },
+            { 
+                imageSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="100%" height="100%" fill="#2c4a5c"/><ellipse cx="200" cy="120" rx="100" ry="55" fill="#4aa0c0"/><text x="200" y="130" text-anchor="middle" fill="white" font-size="46">💧</text><text x="200" y="200" text-anchor="middle" fill="#ffcd7e" font-size="22" font-weight="bold">Озеро Байкал</text><text x="200" y="235" text-anchor="middle" fill="#b0c4ce" font-size="14">~1980 г.</text></svg>`,
+                correctLat: 53.5, correctLng: 107.5, correctYear: 1980,
+                description: "Озеро Байкал"
+            },
+            { 
+                imageSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="100%" height="100%" fill="#2c4a5c"/><polygon points="200,60 260,100 260,160 200,200 140,160 140,100" fill="#e0b07c"/><text x="200" y="130" text-anchor="middle" fill="#2c4a5c" font-size="44">👑</text><text x="200" y="200" text-anchor="middle" fill="#ffcd7e" font-size="18" font-weight="bold">Екатерининский дворец</text><text x="200" y="235" text-anchor="middle" fill="#b0c4ce" font-size="14">Царское Село, ~1912 г.</text></svg>`,
+                correctLat: 59.7167, correctLng: 30.3964, correctYear: 1912,
+                description: "Царское Село, Екатерининский дворец"
+            }
+        ];
+
+        // DOM элементы
+        const yearSlider = document.getElementById('yearSlider');
+        const yearValueSpan = document.getElementById('yearValue');
+        const selectedYearDisplay = document.getElementById('selectedYearDisplay');
+        const checkBtn = document.getElementById('checkBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const totalScoreSpan = document.getElementById('totalScore');
+        const currentQNumberSpan = document.getElementById('currentQNumber');
+        const totalQuestionsSpan = document.getElementById('totalQuestions');
+        const lastPointsSpan = document.getElementById('lastPoints');
+        const feedbackDiv = document.getElementById('feedbackArea');
+        const questionImg = document.getElementById('questionImage');
+
+        // Игровые переменные
+        let currentIndex = 0;
+        let userMarker = null;
+        let correctMarker = null;
+        let distanceLine = null;
+        let selectedLat = null, selectedLng = null;
+        let selectedYear = 1950;
+        let totalPoints = 0;
+        let questionAnswered = false;
+        let map = null;
+
+        // ---------- ИНИЦИАЛИЗАЦИЯ КАРТЫ ----------
+        function initMap() {
+            const mapContainer = document.getElementById('map');
+            if (!mapContainer) return;
+            if (mapContainer.clientHeight === 0) mapContainer.style.height = '400px';
+            map = L.map('map').setView([62.0, 95.0], 4);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '',
+                maxZoom: 18,
+                minZoom: 3
+            }).addTo(map);
+            map.attributionControl = null;
+            
+            const russiaBounds = L.latLngBounds([41.0, 19.0], [82.0, 190.0]);
+            map.setMaxBounds(russiaBounds);
+            map.on('move', () => { if (map) map.panInsideBounds(russiaBounds, { animate: false }); });
+            
+            map.on('click', (e) => {
+                if (questionAnswered) {
+                    feedbackDiv.innerHTML = "⚠️ Этот вопрос уже проверен! Нажми «Следующий» для нового задания.";
+                    return;
+                }
+                const { lat, lng } = e.latlng;
+                selectedLat = lat;
+                selectedLng = lng;
+                if (userMarker) map.removeLayer(userMarker);
+                userMarker = L.marker([lat, lng], { 
+                    icon: L.divIcon({ className: 'custom-div-icon', html: '🔵', iconSize: [20,20], popupAnchor: [0,-10] })
+                }).addTo(map);
+                userMarker.bindPopup(`📍 Ваш выбор: ${lat.toFixed(4)}, ${lng.toFixed(4)}`).openPopup();
+                feedbackDiv.innerHTML = `✅ Место выбрано (${lat.toFixed(2)}°, ${lng.toFixed(2)}°). Теперь выбери год и нажми «Проверить».`;
+            });
+            
+            window.addEventListener('resize', () => setTimeout(() => map?.invalidateSize(), 100));
+        }
+
+        function updateYear() {
+            selectedYear = parseInt(yearSlider.value);
+            yearValueSpan.innerText = selectedYear;
+            selectedYearDisplay.innerText = selectedYear;
+        }
+        yearSlider.addEventListener('input', () => {
+            if (questionAnswered) {
+                feedbackDiv.innerHTML = "⚠️ Вопрос уже проверен, изменить год нельзя до следующего вопроса.";
+                return;
+            }
+            updateYear();
+        });
+
+        function getDistance(userLat, userLng, correctLat, correctLng) {
+            const R = 6371;
+            const dLat = (correctLat - userLat) * Math.PI / 180;
+            const dLon = (correctLng - userLng) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(userLat * Math.PI/180) * Math.cos(correctLat * Math.PI/180) * Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function calculatePoints(userLat, userLng, userYear, correctLat, correctLng, correctYear) {
+            const distanceKm = getDistance(userLat, userLng, correctLat, correctLng);
+            const yearDiff = Math.abs(userYear - correctYear);
+            let pointsDist = Math.max(0, 100 * (1 - Math.min(1, distanceKm / 2000)));
+            let pointsYear = Math.max(0, 100 * (1 - Math.min(1, yearDiff / 80)));
+            let finalPoints = (pointsDist + pointsYear) / 2;
+            return { finalPoints: Math.round(finalPoints * 100) / 100, distanceKm, yearDiff, pointsDist, pointsYear };
+        }
+
+        function drawDistanceLine(userLat, userLng, correctLat, correctLng) {
+            if (distanceLine) map.removeLayer(distanceLine);
+            distanceLine = L.polyline([[userLat, userLng], [correctLat, correctLng]], {
+                color: '#ffb347',
+                weight: 3,
+                opacity: 0.8,
+                dashArray: '8, 8'
+            }).addTo(map);
+        }
+
+        function zoomToMarkers(userLat, userLng, correctLat, correctLng) {
+            if (!map) return;
+            const bounds = L.latLngBounds([userLat, userLng], [correctLat, correctLng]);
+            map.fitBounds(bounds, { padding: [50, 50] });
+        }
+
+        function loadImageForQuestion() {
+            const q = QUESTIONS[currentIndex];
+            questionImg.src = `data:image/svg+xml,${encodeURIComponent(q.imageSvg)}`;
+            questionImg.alt = q.description;
+        }
+
+        function loadQuestion() {
+            questionAnswered = false;
+            checkBtn.disabled = false;
+            nextBtn.disabled = true;
+            if (userMarker && map) map.removeLayer(userMarker);
+            if (correctMarker && map) map.removeLayer(correctMarker);
+            if (distanceLine && map) map.removeLayer(distanceLine);
+            userMarker = correctMarker = distanceLine = null;
+            selectedLat = selectedLng = null;
+            
+            const q = QUESTIONS[currentIndex];
+            yearSlider.value = q.correctYear;
+            updateYear();
+            loadImageForQuestion();
+            
+            currentQNumberSpan.innerText = currentIndex+1;
+            totalQuestionsSpan.innerText = QUESTIONS.length;
+            feedbackDiv.innerHTML = `🕰️ Вопрос ${currentIndex+1}. Определи место на карте по фото и выбери год. Кликни на карте, затем «Проверить».`;
+            lastPointsSpan.innerText = '—';
+        }
+
+        function handleCheck() {
+            if (questionAnswered) {
+                feedbackDiv.innerHTML = "❗ Ты уже получил очки за этот вопрос. Нажми «Следующий».";
+                return;
+            }
+            if (selectedLat === null || selectedLng === null) {
+                feedbackDiv.innerHTML = "⚠️ Сначала кликни на карте, чтобы отметить место!";
+                return;
+            }
+            
+            const q = QUESTIONS[currentIndex];
+            const result = calculatePoints(selectedLat, selectedLng, selectedYear, q.correctLat, q.correctLng, q.correctYear);
+            totalPoints += result.finalPoints;
+            totalScoreSpan.innerText = Math.floor(totalPoints * 100) / 100;
+            lastPointsSpan.innerText = result.finalPoints.toFixed(1);
+            
+            feedbackDiv.innerHTML = `
+                <span style="color:#ffd966">📊 РЕЗУЛЬТАТ:</span> <strong>${result.finalPoints.toFixed(1)} / 100 очков</strong><br>
+                📍 Расстояние до правильного места: <strong>${result.distanceKm.toFixed(1)} км</strong> (очки: ${result.pointsDist.toFixed(0)}/100)<br>
+                🗓️ Разница в годах: ${result.yearDiff} лет (очки: ${result.pointsYear.toFixed(0)}/100)<br>
+                ✅ Правильные координаты: ${q.correctLat.toFixed(2)}°, ${q.correctLng.toFixed(2)}° (год ${q.correctYear})<br>
+                🟢 Зеленый маркер — верное место.
+            `;
+            
+            if (correctMarker) map.removeLayer(correctMarker);
+            correctMarker = L.marker([q.correctLat, q.correctLng], {
+                icon: L.divIcon({ className: 'green-marker', html: '🟢', iconSize: [22,22], popupAnchor: [0,-10] })
+            }).addTo(map);
+            correctMarker.bindPopup(`✅ Правильное место (год ${q.correctYear})`).openPopup();
+            
+            drawDistanceLine(selectedLat, selectedLng, q.correctLat, q.correctLng);
+            zoomToMarkers(selectedLat, selectedLng, q.correctLat, q.correctLng);
+            
+            if (userMarker) {
+                userMarker.bindPopup(`📍 Ваш выбор (${selectedYear} г.)<br>Расстояние до верного: ${result.distanceKm.toFixed(1)} км`).openPopup();
+            }
+            
+            questionAnswered = true;
+            checkBtn.disabled = true;
+            nextBtn.disabled = false;
+        }
+
+        function nextQuestion() {
+            if (!questionAnswered && (selectedLat !== null || selectedLng !== null)) {
+                if (confirm("Ты ещё не проверил ответ! Если перейдёшь, очки не начислятся. Продолжить?")) {
+                    if (currentIndex + 1 < QUESTIONS.length) {
+                        currentIndex++;
+                        loadQuestion();
+                    } else {
+                        finishGame();
+                    }
+                }
+                return;
+            }
+            if (!questionAnswered && selectedLat === null) {
+                feedbackDiv.innerHTML = "Сначала выбери место на карте и нажми «Проверить».";
+                return;
+            }
+            if (currentIndex + 1 < QUESTIONS.length) {
+                currentIndex++;
+                loadQuestion();
+            } else {
+                finishGame();
+            }
+        }
+
+        function finishGame() {
+            feedbackDiv.innerHTML = `🏁 ИГРА ЗАВЕРШЕНА!<br>🎉 Общий счёт: ${Math.floor(totalPoints * 100) / 100} из ${QUESTIONS.length * 100}.<br>Обнови страницу, чтобы сыграть снова.`;
+            checkBtn.disabled = true;
+            nextBtn.disabled = true;
+            yearSlider.disabled = true;
+            if (map) map.off('click');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            totalPoints = 0;
+            totalScoreSpan.innerText = "0";
+            currentIndex = 0;
+            loadQuestion();
+            checkBtn.onclick = handleCheck;
+            nextBtn.onclick = nextQuestion;
+            updateYear();
+        });
+    })();
+</script>
+</body>
+</html>
