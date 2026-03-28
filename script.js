@@ -180,45 +180,48 @@
     let ymapsReady = false;
     let mapInitPromise = null;
 
-    function initYandexMap() {
-        if (mapInitPromise) return mapInitPromise;
-        mapInitPromise = new Promise((resolve) => {
-            if (window.ymaps) {
-                window.ymaps.ready(() => {
-                    map = new window.ymaps.Map("mapView", {
-                        center: [62.0, 95.0],
-                        zoom: 4,
-                        controls: ["zoomControl", "fullscreenControl"]
-                    });
-                    // Ограничим область видимости Россией и ближайшими странами (примерно)
-                    map.options.set("restrictMapArea", [[41, 19], [82, 190]]);
-                    // Обработчик клика
-                    map.events.add("click", (e) => {
-                        if (questionAnswered) {
-                            setInfo("⚠️ Вопрос уже проверен! Нажмите «Следующий».", 3000);
-                            return;
-                        }
-                        const coords = e.get("coords");
-                        selectedLat = coords[0];
-                        selectedLng = coords[1];
-                        coordsDisplay.innerText = `${selectedLat.toFixed(2)}°, ${selectedLng.toFixed(2)}°`;
-                        if (userMarker) map.geoObjects.remove(userMarker);
-                        userMarker = new window.ymaps.Placemark(coords, {
-                            hintContent: "Ваш выбор",
-                        }, {
-                            preset: "islands#blueCircleIcon",
-                        });
-                        map.geoObjects.add(userMarker);
-                        setInfo(`✅ Место выбрано: ${selectedLat.toFixed(2)}°, ${selectedLng.toFixed(2)}°`, 2000);
-                    });
-                    resolve();
+function initYandexMap() {
+    if (mapInitPromise) return mapInitPromise;
+    mapInitPromise = new Promise((resolve) => {
+        if (window.ymaps) {
+            window.ymaps.ready(() => {
+                map = new window.ymaps.Map("mapView", {
+                    center: [62.0, 95.0],
+                    zoom: 4,
+                    controls: ["zoomControl"] // оставляем только кнопку зума
+                }, {
+                    suppressMapOpenBlock: true, // убираем сообщение об открытии в приложении
+                    yandexMapDisablePoiInteractivity: true // отключаем интерактивность POI
                 });
-            } else {
-                setTimeout(initYandexMap, 100);
-            }
-        });
-        return mapInitPromise;
-    }
+                // Ограничим область видимости
+                map.options.set("restrictMapArea", [[41, 19], [82, 190]]);
+                // Обработчик клика
+                map.events.add("click", (e) => {
+                    if (questionAnswered) {
+                        setInfo("⚠️ Вопрос уже проверен! Нажмите «Следующий».", 3000);
+                        return;
+                    }
+                    const coords = e.get("coords");
+                    selectedLat = coords[0];
+                    selectedLng = coords[1];
+                    coordsDisplay.innerText = `${selectedLat.toFixed(2)}°, ${selectedLng.toFixed(2)}°`;
+                    if (userMarker) map.geoObjects.remove(userMarker);
+                    userMarker = new window.ymaps.Placemark(coords, {
+                        hintContent: "Ваш выбор",
+                    }, {
+                        preset: "islands#blueCircleIcon",
+                    });
+                    map.geoObjects.add(userMarker);
+                    setInfo(`✅ Место выбрано: ${selectedLat.toFixed(2)}°, ${selectedLng.toFixed(2)}°`, 2000);
+                });
+                resolve();
+            });
+        } else {
+            setTimeout(initYandexMap, 100);
+        }
+    });
+    return mapInitPromise;
+}
 
     function clearMapMarkers() {
         if (!map) return;
