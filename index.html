@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>TimeGuesser — угадай место и год</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23ff8c42'/%3E%3Ctext x='50' y='68' font-size='48' text-anchor='middle' fill='white' font-family='monospace'%3E⏳%3C/text%3E%3C/svg%3E">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        html, body {
+            height: 100%;
+            background: #f0f2f5;
+            font-family: system-ui, 'Segoe UI', 'Roboto', sans-serif;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+        }
+        .screen {
+            width: 100%;
+            max-width: 1300px;
+            background: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            height: 95vh;
+            overflow: hidden;
+            position: relative;
+        }
+        .hidden {
+            display: none !important;
+        }
+        /* --- Модальное окно --- */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .modal-content {
+            background: #ffffff;
+            border-radius: 2rem;
+            padding: 2rem 2rem 1.5rem;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.3);
+        }
+        .modal-content p {
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            color: #212529;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .modal-btn {
+            background: #ff8c42;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            transition: 0.1s;
+        }
+        .modal-btn:hover {
+            background: #e07c32;
+        }
+        .modal-btn.secondary {
+            background: #6c757d;
+        }
+        .modal-btn.secondary:hover {
+            background: #5a6268;
+        }
+        .modal-message {
+            background: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 1rem;
+            margin-bottom: 1.5rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        /* --- Меню --- */
+        .menu-screen {
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: linear-gradient(135deg, #ffffff, #f8f9fa);
+        }
+        .menu-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #ff8c42, #e0692c);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 2rem;
+        }
+        .menu-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .menu-btn {
+            background: #ff8c42;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 60px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: 0.1s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .menu-btn:active {
+            transform: scale(0.96);
+        }
+        /* --- Игровой экран (общие) --- */
+        .game-screen {
+            display: flex;
+            flex-direction: column;
+        }
+        .game-header {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #dee2e6;
+            background: #ffffff;
+        }
+        .back-btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .game-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #ff8c42, #e0692c);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .info-block {
+            flex-shrink: 0;
+            background: #f8f9fa;
+            margin: 8px 12px 0 12px;
+            padding: 8px 12px;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            text-align: center;
+            border: 1px solid #dee2e6;
+            color: #212529;
+            line-height: 1.4;
+        }
+        /* Основная область: до проверки – переключение карта/изображение; после – сплит */
+        .main-area {
+            flex: 1;
+            min-height: 0;
+            margin: 8px 12px;
+            border-radius: 1rem;
+            overflow: hidden;
+            position: relative;
+        }
+        .view-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        /* Стили для сплита (после проверки) */
+        .split-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            gap: 8px;
+        }
+        .split-map, .split-image {
+            flex: 1;
+            min-height: 0;
+            background: #e9ecef;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            position: relative;
+        }
+        .split-image .image-wrapper {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+            background: #e9ecef;
+        }
+        .split-image .historical-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: 0 0;
+            will-change: transform;
+            pointer-events: none;
+        }
+        /* Обычный вид (до проверки) */
+        .toggle-view {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        .view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.2s ease;
+        }
+        .view-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #mapView {
+            width: 100%;
+            height: 100%;
+        }
+        .image-wrapper {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+            background: #e9ecef;
+            touch-action: none;
+            cursor: grab;
+        }
+        .image-wrapper:active {
+            cursor: grabbing;
+        }
+        .historical-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: 0 0;
+            will-change: transform;
+            pointer-events: none;
+        }
+        .zoom-buttons {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            display: flex;
+            gap: 8px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 40px;
+            padding: 6px 12px;
+            backdrop-filter: blur(4px);
+            z-index: 10;
+        }
+        .zoom-btn {
+            background: #ff8c42;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.1s;
+        }
+        .zoom-btn:active {
+            transform: scale(0.95);
+        }
+        .switch-btn {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            width: 48px;
+            height: 48px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 12px;
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            border: 1px solid #ff8c42;
+            transition: 0.1s;
+        }
+        .switch-btn:active {
+            transform: scale(0.95);
+        }
+        .switch-icon {
+            font-size: 24px;
+        }
+        .selected-info {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: white;
+            z-index: 10;
+            pointer-events: none;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        @media (max-width: 700px) {
+            .selected-info {
+                font-size: 10px;
+                white-space: normal;
+                max-width: 70%;
+            }
+        }
+        .control-bar {
+            flex-shrink: 0;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #ffffff;
+            border-top: 1px solid #dee2e6;
+        }
+        .year-slider-area {
+            width: 100%;
+            background: #f8f9fa;
+            padding: 6px 12px;
+            border-radius: 2rem;
+            border: 1px solid #dee2e6;
+        }
+        .year-label {
+            font-size: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            color: #212529;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        .big-btn {
+            width: 100%;
+            background: #ff8c42;
+            border: none;
+            padding: 10px;
+            border-radius: 3rem;
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+            color: white;
+            text-align: center;
+            transition: 0.1s;
+        }
+        .big-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        /* Усиленное скрытие копирайтов Яндекс.Карт */
+        .ymaps-copyrights-pane,
+        .ymaps-logo,
+        .ymaps-copyright,
+        [class*="ymaps-copyright"],
+        [class*="ymaps-logo"],
+        .ymaps-2-1-79-copyright,
+        .ymaps-2-1-79-copyrights-pane {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+        @media (max-width: 700px) {
+            .menu-title { font-size: 1.8rem; }
+            .menu-btn { padding: 10px 24px; font-size: 1rem; }
+            .game-title { font-size: 1.1rem; }
+            .info-block { font-size: 0.75rem; }
+            .control-bar { gap: 8px; }
+        }
+    </style>
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=c03f89a7-f0e9-47b7-95f0-57e818aa7701&lang=ru_RU" type="text/javascript"></script>
+</head>
+<body>
+    <!-- Модальное окно (изначально скрыто) -->
+    <div id="gameModeModal" class="modal hidden">
+        <div class="modal-content">
+            <p id="modalQuestion">Выберите действие</p>
+            <div id="modalButtons" class="modal-buttons"></div>
+        </div>
+    </div>
+
+    <!-- Меню -->
+    <div id="menuScreen" class="screen menu-screen">
+        <div class="menu-title">TIMEGUESSER RUSSIA</div>
+        <div class="menu-buttons">
+            <button id="singlePlayerBtn" class="menu-btn">Одиночная игра</button>
+            <button id="multiPlayerBtn" class="menu-btn">Многопользовательская</button>
+        </div>
+    </div>
+
+    <!-- Игровой экран -->
+    <div id="gameScreen" class="screen game-screen hidden">
+        <div class="game-header">
+            <button id="backToMenuBtn" class="back-btn">← Назад</button>
+            <div class="game-title">TIMEGUESSER</div>
+            <div style="width: 60px;"></div>
+        </div>
+        <div class="info-block" id="infoBlock">
+            📍 Нажми на карту, чтобы выбрать место, и выбери год на ползунке
+        </div>
+
+        <!-- Основная область -->
+        <div id="mainArea" class="main-area">
+            <!-- До проверки: переключение карта/изображение -->
+            <div id="toggleView" class="toggle-view">
+                <div class="view-container">
+                    <div id="mapView" class="view"></div>
+                    <div id="imageView" class="view view-hidden">
+                        <div class="image-wrapper" id="imageWrapper">
+                            <img id="historicalImage" class="historical-img" src="" alt="Историческое фото">
+                        </div>
+                        <div class="zoom-buttons">
+                            <button class="zoom-btn" id="zoomOut">−</button>
+                            <button class="zoom-btn" id="zoomIn">+</button>
+                        </div>
+                    </div>
+                    <div class="switch-btn" id="switchViewBtn">
+                        <span class="switch-icon" id="switchIcon">🗺️</span>
+                    </div>
+                    <div class="selected-info" id="selectedInfo">
+                        🏆 Счёт: <span id="totalScore">0</span>
+                    </div>
+                </div>
+            </div>
+            <!-- После проверки: сплит (карта + изображение) – изначально скрыт -->
+            <div id="splitView" class="split-container hidden">
+                <div id="splitMap" class="split-map"></div>
+                <div id="splitImage" class="split-image">
+                    <div class="image-wrapper" id="splitImageWrapper">
+                        <img id="splitHistoricalImage" class="historical-img" src="" alt="Историческое фото">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-bar">
+            <div id="yearSliderArea" class="year-slider-area">
+                <div class="year-label">
+                    <span>🗓️ ВЫБЕРИТЕ ГОД</span>
+                    <span id="yearValueDisplay">1950</span>
+                </div>
+                <input type="range" id="yearSlider" min="1850" max="2024" step="1" value="1950">
+            </div>
+            <button id="actionBtn" class="big-btn">✅ ПРОВЕРИТЬ</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ----- БАЗОВЫЙ МАССИВ ВОПРОСОВ -----
+            const BASE_QUESTIONS = [
+                { imageUrl: "img/red_square.jpg", correctLat: 55.7537, correctLng: 37.6199, correctYear: 1905, description: "Красная площадь, Москва, начало XX века" },
+                { imageUrl: "img/nevsky.jpg", correctLat: 59.9343, correctLng: 30.3061, correctYear: 1910, description: "Невский проспект, Санкт-Петербург, 1910-е" },
+                { imageUrl: "img/vladivostok_station.jpg", correctLat: 43.1155, correctLng: 131.8855, correctYear: 1995, description: "Железнодорожный вокзал Владивостока" },
+                { imageUrl: "img/baikal.jpg", correctLat: 53.5, correctLng: 107.5, correctYear: 1980, description: "Озеро Байкал" },
+                { imageUrl: "img/catherine_palace.jpg", correctLat: 59.7167, correctLng: 30.3964, correctYear: 1912, description: "Царское Село, Екатерининский дворец" }
+            ];
+
+            // Функция для перемешивания массива (Fisher-Yates)
+            function shuffleArray(arr) {
+                const array = [...arr];
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            // DOM элементы
+            const yearSlider = document.getElementById('yearSlider');
+            const yearValueDisplay = document.getElementById('yearValueDisplay');
+            const actionBtn = document.getElementById('actionBtn');
+            const totalScoreSpan = document.getElementById('totalScore');
+            const historicalImg = document.getElementById('historicalImage');
+            const splitHistoricalImg = document.getElementById('splitHistoricalImage');
+            const switchViewBtn = document.getElementById('switchViewBtn');
+            const mapView = document.getElementById('mapView');
+            const imageView = document.getElementById('imageView');
+            const infoBlock = document.getElementById('infoBlock');
+            const zoomInBtn = document.getElementById('zoomIn');
+            const zoomOutBtn = document.getElementById('zoomOut');
+            const imageWrapper = document.getElementById('imageWrapper');
+            const splitImageWrapper = document.getElementById('splitImageWrapper');
+            const toggleViewDiv = document.getElementById('toggleView');
+            const splitViewDiv = document.getElementById('splitView');
+            const splitMapDiv = document.getElementById('splitMap');
+            const yearSliderArea = document.getElementById('yearSliderArea');
+            const selectedInfoDiv = document.getElementById('selectedInfo');
+
+            // Переменные игры
+            let currentQuestions = [];           // текущий перемешанный список вопросов
+            let currentIndex = 0;
+            let userMarker = null, correctMarker = null, distanceLine = null;
+            let selectedLat = null, selectedLng = null;
+            let selectedYear = 1950;
+            let totalPoints = 0;
+            let currentQuestionPoints = 0;
+            let questionAnswered = false;
+            let map = null;
+            let currentView = 'image';
+            let splitMapInstance = null;
+
+            // --- Управление изображением (улучшенное центрирование и ограничение отдаления) ---
+            let imgW = 0, imgH = 0;
+            let scale = 1, translateX = 0, translateY = 0;
+            let drag = false, dragStartX = 0, dragStartY = 0, dragStartTranslateX = 0, dragStartTranslateY = 0;
+            let minScale = 0.5; // будет пересчитываться динамически
+
+            function updateTransform() {
+                historicalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+                if (splitHistoricalImg && !splitViewDiv.classList.contains('hidden')) {
+                    centerSplitImage();
+                }
+            }
+
+            // Вычисление минимального масштаба (изображение не должно быть меньше контейнера минус 25px с каждой стороны)
+            function updateMinScale() {
+                if (imgW === 0 || imgH === 0) return;
+                const rect = imageWrapper.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return;
+                const margin = 25; // 25px отступа от края
+                // требуемый минимальный масштаб, чтобы изображение было не меньше (контейнер - 2*margin)
+                const requiredScale = Math.max(
+                    (rect.width - 2 * margin) / imgW,
+                    (rect.height - 2 * margin) / imgH
+                );
+                // не позволяем отдалить изображение сильнее, чем requiredScale, но не меньше 0.3 (чтобы совсем не сжать)
+                minScale = Math.min(1, Math.max(0.3, requiredScale));
+                // если текущий масштаб меньше нового минимума, поднимаем его
+                if (scale < minScale) {
+                    scale = minScale;
+                    centerImage();
+                }
+            }
+
+            function applyBounds() {
+                if (imgW === 0) return;
+                const rect = imageWrapper.getBoundingClientRect();
+                const imgW_scaled = imgW * scale;
+                const imgH_scaled = imgH * scale;
+                const maxX = Math.max(0, (imgW_scaled - rect.width) / 2);
+                const maxY = Math.max(0, (imgH_scaled - rect.height) / 2);
+                translateX = Math.min(maxX, Math.max(-maxX, translateX));
+                translateY = Math.min(maxY, Math.max(-maxY, translateY));
+                updateTransform();
+            }
+
+            function centerImage() {
+                if (imgW === 0) return;
+                const rect = imageWrapper.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return;
+                translateX = (rect.width - imgW * scale) / 2;
+                translateY = (rect.height - imgH * scale) / 2;
+                applyBounds();
+            }
+
+            function centerSplitImage() {
+                if (!splitHistoricalImg || imgW === 0) return;
+                const rect = splitImageWrapper.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return;
+                const totalScale = scale;
+                const imgScaledW = imgW * totalScale;
+                const imgScaledH = imgH * totalScale;
+                const splitTranslateX = (rect.width - imgScaledW) / 2;
+                const splitTranslateY = (rect.height - imgScaledH) / 2;
+                splitHistoricalImg.style.transform = `translate(${splitTranslateX}px, ${splitTranslateY}px) scale(${totalScale})`;
+            }
+
+            function setZoom(delta) {
+                if (imgW === 0) return;
+                let newScale = scale + delta;
+                newScale = Math.min(3, Math.max(minScale, newScale));
+                if (newScale === scale) return;
+                scale = newScale;
+                centerImage();
+                if (!splitViewDiv.classList.contains('hidden')) centerSplitImage();
+            }
+
+            function resetImage() {
+                scale = 1;
+                centerImage();
+                if (!splitViewDiv.classList.contains('hidden')) centerSplitImage();
+            }
+
+            function loadImage() {
+                const q = currentQuestions[currentIndex];
+                const img = new Image();
+                img.onload = () => {
+                    imgW = img.width;
+                    imgH = img.height;
+                    historicalImg.src = q.imageUrl;
+                    historicalImg.style.width = `${imgW}px`;
+                    historicalImg.style.height = `${imgH}px`;
+                    if (splitHistoricalImg) {
+                        splitHistoricalImg.src = q.imageUrl;
+                        splitHistoricalImg.style.width = `${imgW}px`;
+                        splitHistoricalImg.style.height = `${imgH}px`;
+                    }
+                    updateMinScale();
+                    resetImage();
+                };
+                img.onerror = () => {
+                    imgW = 400; imgH = 260;
+                    const fallbackSrc = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="100%" height="100%" fill="#6c757d"/><text x="200" y="130" text-anchor="middle" fill="white" font-size="18">Не загружено</text><text x="200" y="170" text-anchor="middle" fill="#f8f9fa" font-size="14">${q.description}</text></svg>`)}`;
+                    historicalImg.src = fallbackSrc;
+                    historicalImg.style.width = '400px';
+                    historicalImg.style.height = '260px';
+                    if (splitHistoricalImg) {
+                        splitHistoricalImg.src = fallbackSrc;
+                        splitHistoricalImg.style.width = '400px';
+                        splitHistoricalImg.style.height = '260px';
+                    }
+                    updateMinScale();
+                    resetImage();
+                };
+                img.src = q.imageUrl;
+            }
+
+            // --- Мышь и тач для изображения (основного) ---
+            function onMouseDown(e) {
+                if (currentView !== 'image') return;
+                e.preventDefault();
+                drag = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                dragStartTranslateX = translateX;
+                dragStartTranslateY = translateY;
+                imageWrapper.style.cursor = 'grabbing';
+            }
+            function onMouseMove(e) {
+                if (!drag || currentView !== 'image') return;
+                e.preventDefault();
+                translateX = dragStartTranslateX + (e.clientX - dragStartX);
+                translateY = dragStartTranslateY + (e.clientY - dragStartY);
+                applyBounds();
+            }
+            function onMouseUp() {
+                drag = false;
+                imageWrapper.style.cursor = 'grab';
+            }
+            function onWheel(e) {
+                if (currentView !== 'image') return;
+                e.preventDefault();
+                setZoom(e.deltaY > 0 ? -0.1 : 0.1);
+            }
+
+            let touchData = { scale: 1, dist: 0, active: false, startTranslateX: 0, startTranslateY: 0 };
+            function onTouchStart(e) {
+                if (currentView !== 'image') return;
+                const touches = e.touches;
+                if (touches.length === 1) {
+                    touchData.active = true;
+                    touchData.startX = touches[0].clientX;
+                    touchData.startY = touches[0].clientY;
+                    touchData.startTranslateX = translateX;
+                    touchData.startTranslateY = translateY;
+                    e.preventDefault();
+                } else if (touches.length === 2) {
+                    const dx = touches[0].clientX - touches[1].clientX;
+                    const dy = touches[0].clientY - touches[1].clientY;
+                    touchData.dist = Math.hypot(dx, dy);
+                    touchData.scale = scale;
+                    touchData.active = true;
+                    e.preventDefault();
+                }
+            }
+            function onTouchMove(e) {
+                if (currentView !== 'image') return;
+                const touches = e.touches;
+                if (touches.length === 1 && touchData.active && !touchData.dist) {
+                    const dx = touches[0].clientX - touchData.startX;
+                    const dy = touches[0].clientY - touchData.startY;
+                    translateX = touchData.startTranslateX + dx;
+                    translateY = touchData.startTranslateY + dy;
+                    applyBounds();
+                    e.preventDefault();
+                } else if (touches.length === 2 && touchData.dist) {
+                    const dx = touches[0].clientX - touches[1].clientX;
+                    const dy = touches[0].clientY - touches[1].clientY;
+                    const newDist = Math.hypot(dx, dy);
+                    const delta = (newDist / touchData.dist) * touchData.scale - scale;
+                    setZoom(delta);
+                    e.preventDefault();
+                }
+            }
+            function onTouchEnd() {
+                touchData = { scale: 1, dist: 0, active: false, startTranslateX: 0, startTranslateY: 0 };
+            }
+
+            // --- Инициализация карты (основной) ---
+            async function initMainMap() {
+                return new Promise((resolve) => {
+                    if (window.ymaps) {
+                        window.ymaps.ready(() => {
+                            map = new window.ymaps.Map("mapView", {
+                                center: [62.0, 95.0],
+                                zoom: 4,
+                                controls: ["zoomControl"]
+                            }, {
+                                suppressMapOpenBlock: true,
+                                yandexMapDisablePoiInteractivity: true
+                            });
+                            map.options.set("restrictMapArea", [[41, 19], [82, 190]]);
+                            map.events.add("click", (e) => {
+                                if (questionAnswered) {
+                                    setInfo("⚠️ Вопрос уже проверен! Нажмите «Следующий».", 3000);
+                                    return;
+                                }
+                                const coords = e.get("coords");
+                                selectedLat = coords[0];
+                                selectedLng = coords[1];
+                                if (userMarker) map.geoObjects.remove(userMarker);
+                                userMarker = new window.ymaps.Placemark(coords, {
+                                    hintContent: "Ваш выбор",
+                                }, {
+                                    preset: "islands#blueCircleIcon",
+                                });
+                                map.geoObjects.add(userMarker);
+                                setInfo(`✅ Место выбрано: ${selectedLat.toFixed(2)}°, ${selectedLng.toFixed(2)}°`, 2000);
+                            });
+                            hideCopyrights();
+                            resolve();
+                        });
+                    } else {
+                        setTimeout(initMainMap, 100);
+                    }
+                });
+            }
+
+            function hideCopyrights() {
+                const selectors = [
+                    '.ymaps-copyrights-pane', '.ymaps-logo', '.ymaps-copyright',
+                    '[class*="ymaps-copyright"]', '[class*="ymaps-logo"]',
+                    '.ymaps-2-1-79-copyright', '.ymaps-2-1-79-copyrights-pane'
+                ];
+                selectors.forEach(sel => {
+                    document.querySelectorAll(sel).forEach(el => {
+                        el.style.display = 'none';
+                        el.style.visibility = 'hidden';
+                        el.style.opacity = '0';
+                    });
+                });
+            }
+
+            function clearMapMarkers() {
+                if (!map) return;
+                if (userMarker) map.geoObjects.remove(userMarker);
+                if (correctMarker) map.geoObjects.remove(correctMarker);
+                if (distanceLine) map.geoObjects.remove(distanceLine);
+                userMarker = correctMarker = distanceLine = null;
+            }
+
+            function addCorrectMarker(lat, lng, year) {
+                correctMarker = new window.ymaps.Placemark([lat, lng], {
+                    hintContent: `✅ Правильное место (год ${year})`,
+                }, {
+                    preset: "islands#greenCircleIcon",
+                });
+                map.geoObjects.add(correctMarker);
+            }
+
+            function drawLineAndZoom(ul, ulng, cl, clng) {
+                if (distanceLine) map.geoObjects.remove(distanceLine);
+                distanceLine = new window.ymaps.Polyline([[ul, ulng], [cl, clng]], {}, {
+                    strokeColor: "#ff8c42",
+                    strokeWidth: 3,
+                    strokeStyle: "dash",
+                });
+                map.geoObjects.add(distanceLine);
+                const bounds = window.ymaps.util.bounds.fromPoints([[ul, ulng], [cl, clng]]);
+                map.setBounds(bounds, { checkZoomRange: true, zoomMargin: 70 });
+            }
+
+            // --- Создание карты в сплите ---
+            async function initSplitMap() {
+                if (!window.ymaps) return;
+                return new Promise((resolve) => {
+                    window.ymaps.ready(() => {
+                        if (splitMapInstance) splitMapInstance.destroy();
+                        splitMapInstance = new window.ymaps.Map(splitMapDiv, {
+                            center: [62.0, 95.0],
+                            zoom: 4,
+                            controls: ["zoomControl"]
+                        }, {
+                            suppressMapOpenBlock: true,
+                            yandexMapDisablePoiInteractivity: true
+                        });
+                        splitMapInstance.options.set("restrictMapArea", [[41, 19], [82, 190]]);
+                        if (selectedLat !== null && selectedLng !== null) {
+                            const userPoint = new window.ymaps.Placemark([selectedLat, selectedLng], {
+                                hintContent: "Ваш выбор",
+                            }, { preset: "islands#blueCircleIcon" });
+                            splitMapInstance.geoObjects.add(userPoint);
+                        }
+                        const correctPoint = new window.ymaps.Placemark([currentQuestions[currentIndex].correctLat, currentQuestions[currentIndex].correctLng], {
+                            hintContent: `✅ Правильное место (год ${currentQuestions[currentIndex].correctYear})`,
+                        }, { preset: "islands#greenCircleIcon" });
+                        splitMapInstance.geoObjects.add(correctPoint);
+                        const line = new window.ymaps.Polyline([[selectedLat, selectedLng], [currentQuestions[currentIndex].correctLat, currentQuestions[currentIndex].correctLng]], {}, {
+                            strokeColor: "#ff8c42",
+                            strokeWidth: 3,
+                            strokeStyle: "dash",
+                        });
+                        splitMapInstance.geoObjects.add(line);
+                        const bounds = window.ymaps.util.bounds.fromPoints([[selectedLat, selectedLng], [currentQuestions[currentIndex].correctLat, currentQuestions[currentIndex].correctLng]]);
+                        splitMapInstance.setBounds(bounds, { checkZoomRange: true, zoomMargin: 70 });
+                        hideCopyrights();
+                        resolve();
+                    });
+                });
+            }
+
+            // --- Игровая логика ---
+            function getDistance(lat1, lng1, lat2, lng2) {
+                const R = 6371;
+                const dLat = (lat2 - lat1) * Math.PI/180;
+                const dLng = (lng2 - lng1) * Math.PI/180;
+                const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            }
+            function calcPoints(ul, uLng, uYear, cl, cLng, cYear) {
+                const dist = getDistance(ul, uLng, cl, cLng);
+                const ydiff = Math.abs(uYear - cYear);
+                const pDist = Math.max(0, 100 * (1 - Math.min(1, dist/2000)));
+                const pYear = Math.max(0, 100 * (1 - Math.min(1, ydiff/80)));
+                return { final: Math.round((pDist+pYear)/2*100)/100, dist, ydiff };
+            }
+
+            let infoTimeout;
+            function setInfo(msg, dur = 3000) {
+                clearTimeout(infoTimeout);
+                infoBlock.innerHTML = msg;
+                infoTimeout = setTimeout(() => {
+                    if (!questionAnswered) infoBlock.innerHTML = "📍 Нажми на карту, чтобы выбрать место, и выбери год на ползунке";
+                }, dur);
+            }
+
+            function switchView() {
+                if (currentView === 'image') {
+                    mapView.classList.remove('view-hidden');
+                    imageView.classList.add('view-hidden');
+                    currentView = 'map';
+                    document.getElementById('switchIcon').innerHTML = '🖼️';
+                    if (map) map.container.fitToViewport();
+                } else {
+                    mapView.classList.add('view-hidden');
+                    imageView.classList.remove('view-hidden');
+                    currentView = 'image';
+                    document.getElementById('switchIcon').innerHTML = '🗺️';
+                    centerImage();
+                }
+            }
+
+            function zoomImage(delta) {
+                if (currentView !== 'image') return;
+                setZoom(delta);
+            }
+
+            function loadQuestion(savedYear = null) {
+                questionAnswered = false;
+                actionBtn.disabled = false;
+                actionBtn.innerText = "✅ ПРОВЕРИТЬ";
+                actionBtn.onclick = handleCheck;
+                setInfo("📍 Нажми на карту, чтобы выбрать место, и выбери год на ползунке", 2000);
+                clearMapMarkers();
+                selectedLat = selectedLng = null;
+                // Обновляем отображение счёта (только общий счёт)
+                selectedInfoDiv.innerHTML = `🏆 Счёт: ${Math.floor(totalPoints*100)/100}`;
+                const q = currentQuestions[currentIndex];
+                let yearToSet = savedYear !== null ? savedYear : Math.floor(Math.random() * (2024-1850+1)) + 1850;
+                yearSlider.value = yearToSet;
+                selectedYear = yearToSet;
+                yearValueDisplay.innerText = yearToSet;
+                loadImage();
+
+                toggleViewDiv.classList.remove('hidden');
+                splitViewDiv.classList.add('hidden');
+                yearSliderArea.style.display = '';
+                if (currentView === 'map') switchView();
+                else centerImage();
+            }
+
+            function updateYear() {
+                selectedYear = parseInt(yearSlider.value);
+                yearValueDisplay.innerText = selectedYear;
+                saveGameState();
+            }
+            yearSlider.addEventListener('input', () => {
+                if (questionAnswered) {
+                    setInfo("⚠️ Вопрос уже проверен, изменить год нельзя.", 2000);
+                    yearSlider.value = selectedYear;
+                    return;
+                }
+                updateYear();
+            });
+
+            function handleCheck() {
+                if (questionAnswered) {
+                    setInfo("❗ Ты уже получил очки. Нажми «Следующий».", 3000);
+                    return;
+                }
+                if (selectedLat === null) {
+                    setInfo("⚠️ Сначала выбери место на карте!", 3000);
+                    return;
+                }
+                actionBtn.disabled = true;
+                const q = currentQuestions[currentIndex];
+                const res = calcPoints(selectedLat, selectedLng, selectedYear, q.correctLat, q.correctLng, q.correctYear);
+                totalPoints += res.final;
+                currentQuestionPoints = res.final;
+                totalScoreSpan.innerText = Math.floor(totalPoints*100)/100;
+                // Обновляем левый верхний угол: общий счёт и очки за этот вопрос
+                selectedInfoDiv.innerHTML = `🏆 Счёт: ${Math.floor(totalPoints*100)/100} &nbsp;|&nbsp; 🎯 Очки: ${currentQuestionPoints.toFixed(1)}/100`;
+                
+                // Формируем сообщение о разнице в годах
+                const yearDiffText = res.ydiff === 0 ? "Год выбран верно!" : `Разница в годах: ${res.ydiff} лет`;
+                
+                setInfo(
+                    `✅ <strong>Правильный ответ:</strong> ${q.description}<br>` +
+                    `🎯 Очки за раунд: ${res.final.toFixed(1)}/100<br>` +
+                    `${yearDiffText}<br>` +
+                    `📏 Разница в местоположении: ${res.dist.toFixed(1)} км`,
+                    8000
+                );
+                addCorrectMarker(q.correctLat, q.correctLng, q.correctYear);
+                drawLineAndZoom(selectedLat, selectedLng, q.correctLat, q.correctLng);
+                if (userMarker) userMarker.properties.set("hintContent", `📍 Ваш выбор (${selectedYear} г.)<br>Разница: ${res.dist.toFixed(1)} км`);
+
+                questionAnswered = true;
+
+                saveGameState();
+
+                yearSliderArea.style.display = 'none';
+                toggleViewDiv.classList.add('hidden');
+                splitViewDiv.classList.remove('hidden');
+
+                initSplitMap().catch(e => console.error(e));
+
+                splitHistoricalImg.src = historicalImg.src;
+                splitHistoricalImg.style.width = historicalImg.style.width;
+                splitHistoricalImg.style.height = historicalImg.style.height;
+                setTimeout(() => centerSplitImage(), 50);
+
+                actionBtn.innerText = "➡️ СЛЕДУЮЩИЙ ВОПРОС";
+                actionBtn.disabled = false;
+                actionBtn.onclick = () => {
+                    if (!questionAnswered) return;
+                    currentIndex++;
+                    if (currentIndex < currentQuestions.length) {
+                        loadQuestion();
+                        saveGameState();
+                    } else {
+                        setInfo(`Игра завершена! Счёт: ${Math.floor(totalPoints*100)/100} из ${currentQuestions.length*100}`, 5000);
+                        actionBtn.disabled = true;
+                        actionBtn.innerText = "🏁 ФИНИШ";
+                        clearGameState();
+                    }
+                };
+            }
+
+            // --- Функции сохранения / загрузки прогресса (включая порядок вопросов) ---
+            function saveGameState() {
+                const state = {
+                    totalPoints: totalPoints,
+                    currentIndex: currentIndex,
+                    selectedYear: selectedYear,
+                    currentQuestions: currentQuestions   // сохраняем порядок вопросов
+                };
+                localStorage.setItem('timeguesser_save', JSON.stringify(state));
+            }
+
+            function loadGameState() {
+                const saved = localStorage.getItem('timeguesser_save');
+                if (saved) {
+                    try {
+                        return JSON.parse(saved);
+                    } catch(e) { return null; }
+                }
+                return null;
+            }
+
+            function clearGameState() {
+                localStorage.removeItem('timeguesser_save');
+            }
+
+            // --- Запуск игры (с возможностью загрузить сохранение) ---
+            async function startGameWithState(useSaved = false) {
+                // Показываем игровой экран и скрываем меню
+                menuScreen.classList.add('hidden');
+                gameScreen.classList.remove('hidden');
+
+                await initMainMap();
+
+                if (useSaved) {
+                    const saved = loadGameState();
+                    if (saved && saved.currentQuestions && saved.currentIndex < saved.currentQuestions.length) {
+                        // Восстанавливаем перемешанный массив вопросов
+                        currentQuestions = saved.currentQuestions;
+                        totalPoints = saved.totalPoints;
+                        currentIndex = saved.currentIndex;
+                        selectedYear = saved.selectedYear;
+                        totalScoreSpan.innerText = Math.floor(totalPoints*100)/100;
+                        loadQuestion(saved.selectedYear);
+                        questionAnswered = false;
+                        toggleViewDiv.classList.remove('hidden');
+                        splitViewDiv.classList.add('hidden');
+                        yearSliderArea.style.display = '';
+                        if (currentView === 'map') switchView();
+                        // после загрузки сохраняем отображение только общего счёта
+                        selectedInfoDiv.innerHTML = `🏆 Счёт: ${Math.floor(totalPoints*100)/100}`;
+                    } else {
+                        // сохранение недействительно – начинаем новую игру
+                        currentQuestions = shuffleArray(BASE_QUESTIONS);
+                        totalPoints = 0;
+                        totalScoreSpan.innerText = "0";
+                        currentIndex = 0;
+                        loadQuestion();
+                        clearGameState();
+                        saveGameState(); // сохраняем перемешанный порядок
+                    }
+                } else {
+                    currentQuestions = shuffleArray(BASE_QUESTIONS);
+                    totalPoints = 0;
+                    totalScoreSpan.innerText = "0";
+                    currentIndex = 0;
+                    loadQuestion();
+                    clearGameState();
+                    saveGameState(); // сохраняем перемешанный порядок
+                }
+                mapView.classList.add('view-hidden');
+                imageView.classList.remove('view-hidden');
+                currentView = 'image';
+                document.getElementById('switchIcon').innerHTML = '🗺️';
+                hideCopyrights();
+            }
+
+            // --- Модальное окно для выбора режима ---
+            const modal = document.getElementById('gameModeModal');
+            const modalQuestion = document.getElementById('modalQuestion');
+            const modalButtonsDiv = document.getElementById('modalButtons');
+
+            function closeModal() {
+                modal.classList.add('hidden');
+            }
+
+            function showGameModeModal(mode) {
+                if (mode === 'single') {
+                    const hasSave = loadGameState() !== null;
+                    modalQuestion.innerText = hasSave ? "Хотите начать новую игру или продолжить сохранённую?" : "Сохранённая игра не найдена. Начать новую?";
+                    modalButtonsDiv.innerHTML = '';
+                    if (hasSave) {
+                        const newGameBtn = document.createElement('button');
+                        newGameBtn.className = 'modal-btn';
+                        newGameBtn.innerText = 'Новая игра';
+                        newGameBtn.onclick = () => {
+                            closeModal();
+                            startGameWithState(false);
+                        };
+                        const continueBtn = document.createElement('button');
+                        continueBtn.className = 'modal-btn secondary';
+                        continueBtn.innerText = 'Продолжить игру';
+                        continueBtn.onclick = () => {
+                            closeModal();
+                            startGameWithState(true);
+                        };
+                        modalButtonsDiv.appendChild(newGameBtn);
+                        modalButtonsDiv.appendChild(continueBtn);
+                    } else {
+                        const newGameBtn = document.createElement('button');
+                        newGameBtn.className = 'modal-btn';
+                        newGameBtn.innerText = 'Начать новую игру';
+                        newGameBtn.onclick = () => {
+                            closeModal();
+                            startGameWithState(false);
+                        };
+                        modalButtonsDiv.appendChild(newGameBtn);
+                    }
+                    modal.classList.remove('hidden');
+                } else if (mode === 'multi') {
+                    alert("Многопользовательский режим в разработке. Скоро появится!");
+                }
+            }
+
+            // --- Переключение между меню и игрой ---
+            const menuScreen = document.getElementById('menuScreen');
+            const gameScreen = document.getElementById('gameScreen');
+            const singleBtn = document.getElementById('singlePlayerBtn');
+            const multiBtn = document.getElementById('multiPlayerBtn');
+            const backBtn = document.getElementById('backToMenuBtn');
+
+            singleBtn.addEventListener('click', () => {
+                showGameModeModal('single');
+            });
+            multiBtn.addEventListener('click', () => {
+                showGameModeModal('multi');
+            });
+            backBtn.addEventListener('click', () => {
+                gameScreen.classList.add('hidden');
+                menuScreen.classList.remove('hidden');
+                if (map) map.destroy();
+                map = null;
+                if (splitMapInstance) splitMapInstance.destroy();
+                splitMapInstance = null;
+                closeModal();
+            });
+
+            // Подключаем обработчики управления изображением
+            imageWrapper.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+            imageWrapper.addEventListener('wheel', onWheel, { passive: false });
+            imageWrapper.style.cursor = 'grab';
+
+            imageWrapper.addEventListener('touchstart', onTouchStart, { passive: false });
+            imageWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
+            imageWrapper.addEventListener('touchend', onTouchEnd);
+            imageWrapper.addEventListener('touchcancel', onTouchEnd);
+
+            switchViewBtn.addEventListener('click', switchView);
+            zoomInBtn.addEventListener('click', () => zoomImage(0.2));
+            zoomOutBtn.addEventListener('click', () => zoomImage(-0.2));
+
+            window.addEventListener('resize', () => {
+                if (!gameScreen.classList.contains('hidden') && !questionAnswered && currentView === 'image') {
+                    updateMinScale();
+                    centerImage();
+                } else if (map) {
+                    map.container.fitToViewport();
+                }
+                if (!splitViewDiv.classList.contains('hidden')) {
+                    centerSplitImage();
+                }
+                hideCopyrights();
+            });
+        })();
+    </script>
+</body>
+</html>
