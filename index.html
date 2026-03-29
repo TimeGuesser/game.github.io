@@ -889,12 +889,14 @@
             const observer = new MutationObserver(() => hideCopyrights());
             observer.observe(document.body, { childList: true, subtree: true });
 
-            function clearMapMarkers() {
+             function clearMapMarkers() {
                 if (!map) return;
                 if (userMarker) map.geoObjects.remove(userMarker);
                 if (correctMarker) map.geoObjects.remove(correctMarker);
                 if (distanceLine) map.geoObjects.remove(distanceLine);
-                userMarker = correctMarker = distanceLine = null;
+                userMarker = null;
+                correctMarker = null;
+                distanceLine = null;
             }
 
             function addCorrectMarker(lat,lng,year) {
@@ -971,7 +973,7 @@
                 actionBtn.innerText = "✅ ПРОВЕРИТЬ";
                 actionBtn.onclick = handleCheck;
                 setInfo("📍 Нажми на карту, чтобы выбрать место, и выбери год на ползунке", 2000);
-                clearMapMarkers();
+                clearMapMarkers();  // очищаем старые маркеры
                 selectedLat = selectedLng = null;
                 selectedInfoDiv.innerHTML = `🏆 Счёт: ${Math.floor(totalPoints)}`;
                 const q = currentQuestions[currentIndex];
@@ -1113,9 +1115,19 @@
             function clearGameState() { localStorage.removeItem('timeguesser_save'); }
 
             // --- Запуск игры с состоянием ---
+              // --- Запуск игры с состоянием ---
             async function startGameWithState(useSaved = false) {
                 menuScreen.classList.add('hidden');
                 gameScreen.classList.remove('hidden');
+                // Уничтожаем старую карту, если она есть
+                if (map) {
+                    map.destroy();
+                    map = null;
+                }
+                if (splitMapInstance) {
+                    splitMapInstance.destroy();
+                    splitMapInstance = null;
+                }
                 await initMainMap();
                 if (useSaved) {
                     const saved = loadGameState();
