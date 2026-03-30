@@ -1,1615 +1,873 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>HistoryGuesser — угадай место и год</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e3a8a'/%3E%3Ctext x='50' y='68' font-size='48' text-anchor='middle' fill='white' font-family='monospace'%3E⏳%3C/text%3E%3C/svg%3E">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-        }
-        html, body {
-            height: 100%;
-            background: #f0f4f8;
-            font-family: 'Manrope', system-ui, 'Segoe UI', 'Roboto', sans-serif;
-        }
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: stretch;
-            padding: 0;
-        }
-        .screen {
-            width: 100%;
-            max-width: none;
-            background: #ffffff;
-            border-radius: 0;
-            box-shadow: none;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
-        }
-        .hidden {
-            display: none !important;
-        }
-        /* --- Модальные окна --- */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-        .modal-content {
-            background: #ffffff;
-            border-radius: 2rem;
-            padding: 2rem 2rem 1.5rem;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-            box-shadow: 0 20px 35px rgba(0,0,0,0.2);
-            animation: fadeInUp 0.3s ease;
-            position: relative;
-        }
-        .modal-close {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #1e3a8a;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: 0.1s;
-        }
-        .modal-close:hover {
-            background: #eef2f6;
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .modal-content p {
-            font-size: 1rem;
-            margin-bottom: 1rem;
-            color: #1f2937;
-            text-align: left;
-            line-height: 1.5;
-        }
-        .modal-buttons {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 1rem;
-        }
-        .modal-btn {
-            background: #1e3a8a;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 40px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            color: white;
-            transition: all 0.2s;
-        }
-        .modal-btn:hover {
-            background: #152c6b;
-            transform: translateY(-2px);
-        }
-        /* --- Меню --- */
-        .menu-screen {
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            background: linear-gradient(135deg, #f8fafc, #eef2f6);
-            position: relative;
-        }
-        .menu-title {
-            font-size: 2.8rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #1e3a8a, #0f1f4a);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            margin-bottom: 2rem;
-            letter-spacing: -0.02em;
-        }
-        .menu-buttons {
-            display: flex;
-            gap: 24px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .menu-btn {
-            background: #1e3a8a;
-            border: none;
-            padding: 14px 36px;
-            border-radius: 60px;
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: white;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .menu-btn:hover {
-            background: #152c6b;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-        }
-        .help-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 40px;
-            height: 40px;
-            background: #1e3a8a;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: 0.2s;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            color: white;
-            font-size: 1.4rem;
-            font-weight: bold;
-        }
-        .help-btn:hover {
-            background: #152c6b;
-            transform: scale(1.05);
-        }
-        /* --- Игровой экран --- */
-        .game-screen {
-            display: flex;
-            flex-direction: column;
-        }
-        .game-header {
-            flex-shrink: 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 20px;
-            border-bottom: 1px solid #e2e8f0;
-            background: #ffffff;
-        }
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .round-badge {
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: #0f1f4a;
-            background: #eef2ff;
-            border-radius: 10px;
-            padding: 6px 10px;
-        }
-        .header-spacer {
-            width: 54px;
-        }
-        .back-btn {
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            padding: 6px 14px;
-            border-radius: 30px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            font-weight: 500;
-            transition: 0.1s;
-        }
-        .back-btn:hover {
-            background: #e2e8f0;
-        }
-        .game-title {
-            font-size: 1.4rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #1e3a8a, #0f1f4a);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-        .info-block {
-            flex-shrink: 0;
-            background: transparent;
-            margin: 8px 16px 0;
-            padding: 0 2px;
-            font-size: 1rem;
-            text-align: left;
-            border: none;
-            color: #1f2937;
-            line-height: 1.5;
-            font-weight: 500;
-            width: calc(100% - 32px);
-        }
-        .gameplay-layout {
-            flex: 1;
-            min-height: 0;
-            display: grid;
-            grid-template-columns: 1fr;
-        }
-        .main-area {
-            flex: 1;
-            min-height: 0;
-            margin: 12px 16px 8px;
-            border-radius: 1.2rem;
-            overflow: hidden;
-            position: relative;
-            border: 1px solid #dbe3ef;
-        }
-        .view-container {
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
-        .split-container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            gap: 12px;
-        }
-        .split-map, .split-image {
-            flex: 1;
-            min-height: 0;
-            background: #eef2f6;
-            border-radius: 1rem;
-            overflow: hidden;
-            position: relative;
-        }
-        .distance-card {
-            background: white;
-            border-radius: 1rem;
-            padding: 10px 16px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 1rem;
-            color: #1e3a8a;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            border: 1px solid #e2e8f0;
-        }
-        .split-image .image-wrapper {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            position: relative;
-            background: #1a1a1a;
-        }
-        .split-image .historical-img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            transform-origin: 0 0;
-            will-change: transform;
-            pointer-events: none;
-        }
-        .toggle-view {
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
-        .view {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            transition: opacity 0.2s ease;
-        }
-        .view-hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        #mapView {
-            width: 100%;
-            height: 100%;
-        }
-        .image-wrapper {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            position: relative;
-            background: radial-gradient(circle at center, #1f2937 0%, #0f172a 100%);
-            touch-action: none;
-            cursor: grab;
-            overscroll-behavior: contain;
-        }
-        .image-wrapper:active {
-            cursor: grabbing;
-        }
-        .historical-img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            will-change: transform;
-            pointer-events: none;
-            image-rendering: auto;
-            max-width: none;
-        }
-        .historical-bg {
-            transform-origin: 0 0;
-            opacity: 0.35;
-            filter: brightness(0.7) saturate(0.9) blur(0.6px);
-        }
-        .historical-fg {
-            transform-origin: 0 0;
-        }
-        #splitHistoricalImage {
-            transform-origin: 0 0;
-        }
-        .image-overlay {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            background: rgba(0, 0, 0, 0.14);
-        }
-        .zoom-buttons {
-            position: absolute;
-            bottom: 16px;
-            left: 16px;
-            display: flex;
-            gap: 8px;
-            background: rgba(0,0,0,0.6);
-            border-radius: 40px;
-            padding: 6px 12px;
-            backdrop-filter: blur(4px);
-            z-index: 10;
-        }
-        .zoom-btn {
-            background: #1e3a8a;
-            border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.1s;
-        }
-        .zoom-btn:active {
-            transform: scale(0.95);
-        }
-        .switch-btn {
-            position: absolute;
-            bottom: 16px;
-            right: 16px;
-            width: 62px;
-            height: 62px;
-            background: rgba(0,0,0,0.6);
-            border-radius: 14px;
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 1000;
-            border: 1px solid #1e3a8a;
-            transition: 0.1s;
-        }
-        .switch-btn.dragging {
-            cursor: grabbing;
-        }
-        .switch-btn:active {
-            transform: scale(0.95);
-        }
-        .switch-icon {
-            font-size: 30px;
-        }
-        .selected-info {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(8px);
-            border-radius: 20px;
-            padding: 6px 12px;
-            font-size: 14px;
-            color: white;
-            z-index: 10;
-            pointer-events: none;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        @media (max-width: 700px) {
-            .selected-info {
-                font-size: 10px;
-                white-space: normal;
-                max-width: 70%;
-            }
-            .info-block {
-                font-size: 0.85rem;
-                padding: 10px;
-            }
-            .distance-card {
-                font-size: 0.85rem;
-            }
-        }
-        .control-bar {
-            flex-shrink: 0;
-            padding: 8px 16px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            background: #ffffff;
-        }
-        .year-slider-area {
-            width: 100%;
-            background: #f8fafc;
-            padding: 10px 14px;
-            border-radius: 14px;
-            border: 1px solid #e2e8f0;
-        }
-        .year-display {
-            text-align: center;
-            font-size: 1.15rem;
-            font-weight: 800;
-            margin-bottom: 6px;
-            color: #1f2937;
-        }
-        input[type="range"] {
-            width: 100%;
-            accent-color: #1e3a8a;
-        }
-        .big-btn {
-            width: 100%;
-            background: #1e3a8a;
-            border: none;
-            padding: 10px;
-            border-radius: 3rem;
-            font-weight: 600;
-            font-size: 0.9rem;
-            cursor: pointer;
-            color: white;
-            text-align: center;
-            transition: all 0.2s;
-        }
-        .big-btn:hover {
-            background: #152c6b;
-            transform: translateY(-1px);
-        }
-        .big-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .round-score-cards {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-        }
-        .score-card {
-            border: 1px solid #d1d9e6;
-            border-radius: 12px;
-            padding: 8px;
-            text-align: center;
-            background: #f8fafc;
-        }
-        .score-card span {
-            display: block;
-            font-size: 0.72rem;
-            color: #64748b;
-        }
-        .score-card strong {
-            font-size: 1.05rem;
-            color: #0f1f4a;
-        }
-        .result-main {
-            padding: 0 2px;
-        }
-        .result-description {
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: #0f172a;
-            width: 100%;
-            line-height: 1.35;
-        }
-        .result-year-row {
-            margin-top: 8px;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .year-chip {
-            border: 2px solid #1e3a8a;
-            padding: 4px 10px;
-            border-radius: 10px;
-            font-weight: 700;
-        }
-        .year-diff {
-            font-weight: 600;
-            color: #334155;
-        }
-        @media (min-width: 900px) {
-            .gameplay-layout {
-                grid-template-columns: minmax(0, 1fr) 350px;
-                gap: 12px;
-                padding-right: 16px;
-                padding-bottom: 12px;
-            }
-            .main-area {
-                margin: 12px 0 0 16px;
-            }
-            .control-bar {
-                border: 1px solid #dbe3ef;
-                border-radius: 1rem;
-                margin-top: 12px;
-                align-self: stretch;
-                justify-content: flex-end;
-            }
-            .big-btn {
-                margin-top: auto;
-            }
-        }
-        /* Скрытие копирайтов Яндекс.Карт */
-        .ymaps-copyrights-pane,
-        .ymaps-logo,
-        .ymaps-copyright,
-        [class*="ymaps-copyright"],
-        [class*="ymaps-logo"],
-        .ymaps-2-1-79-copyright,
-        .ymaps-2-1-79-copyrights-pane {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
-        .rules-list {
-            list-style: none;
-            padding-left: 0;
-        }
-        .rules-list li {
-            margin-bottom: 12px;
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-        }
-        .rule-bullet {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            background: #1e3a8a;
-            transform: rotate(45deg);
-            margin-top: 6px;
-            flex-shrink: 0;
-        }
-    </style>
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=c03f89a7-f0e9-47b7-95f0-57e818aa7701&lang=ru_RU" type="text/javascript"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>HistoryGuesser — угадай место и год</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e3a8a'/%3E%3Ctext x='50' y='68' font-size='48' text-anchor='middle' fill='white' font-family='monospace'%3E⏳%3C/text%3E%3C/svg%3E">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none;
+      font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: #f1f5f9;
+    }
+    body { display: flex; }
+    .hidden { display: none !important; }
+
+    .screen {
+      width: 100vw; height: 100vh; background: #fff; display: flex; flex-direction: column;
+    }
+
+    .menu-screen {
+      align-items: center; justify-content: center; text-align: center;
+      background: linear-gradient(135deg, #f8fafc, #eef2f6);
+      position: relative;
+    }
+    .menu-title {
+      font-size: clamp(2rem, 6vw, 3.2rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, #1e3a8a, #0f1f4a);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      margin-bottom: 2rem;
+    }
+    .menu-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+    .menu-btn {
+      border: none; background: #1e3a8a; color: #fff; border-radius: 999px; padding: 13px 28px;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+    }
+    .help-btn {
+      position: absolute; top: 16px; right: 16px; width: 42px; height: 42px;
+      border-radius: 50%; background: #1e3a8a; color: #fff; display: grid; place-items: center;
+      font-size: 1.35rem; font-weight: 800; cursor: pointer;
+    }
+
+    .game-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid #dbe3ef;
+    }
+    .back-btn {
+      border: 1px solid #cbd5e1; border-radius: 999px; padding: 7px 14px;
+      background: #f8fafc; font-weight: 600; font-size: .85rem; cursor: pointer;
+    }
+    .game-title {
+      font-weight: 800; font-size: 1.25rem;
+      background: linear-gradient(135deg, #1e3a8a, #0f1f4a);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+
+    .info-block {
+      padding: 10px 16px 0; color: #1f2937; font-size: .97rem; line-height: 1.45;
+    }
+
+    .game-layout {
+      flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr;
+    }
+    .main-area {
+      position: relative; min-height: 0; border-top: 1px solid #dbe3ef; border-bottom: 1px solid #dbe3ef;
+      margin-top: 8px; overflow: hidden;
+    }
+    .control-bar { padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+    @media (min-width: 980px) {
+      .game-layout { grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; padding-right: 12px; }
+      .main-area { margin-top: 8px; }
+      .control-bar {
+        margin-top: 8px; border: 1px solid #dbe3ef; border-radius: 14px; align-self: stretch; justify-content: flex-end;
+      }
+    }
+
+    .view, #mapView { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .view-hidden { opacity: 0; pointer-events: none; }
+    .image-wrapper {
+      position: absolute; inset: 0; overflow: hidden; touch-action: none;
+      background: radial-gradient(circle at center, #1f2937 0%, #0f172a 100%);
+      cursor: grab;
+    }
+    .historical-img {
+      position: absolute; top: 0; left: 0; max-width: none; pointer-events: none;
+      transform-origin: 0 0; will-change: transform;
+    }
+    .historical-bg { opacity: .35; filter: brightness(.7) saturate(.9) blur(.7px); }
+    .image-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.12); pointer-events: none; }
+
+    .overlay-top {
+      position: absolute; top: 12px; left: 12px; right: 12px;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      color: #fff; background: rgba(0,0,0,.68); border-radius: 999px; padding: 6px 12px;
+      backdrop-filter: blur(8px); font-weight: 700; z-index: 20;
+    }
+
+    .zoom-buttons {
+      position: absolute; left: 16px; bottom: 16px; z-index: 30;
+      display: flex; gap: 8px; background: rgba(0,0,0,.6); padding: 6px 10px; border-radius: 999px;
+    }
+    .zoom-btn {
+      width: 34px; height: 34px; border-radius: 50%; border: none;
+      background: #1e3a8a; color: #fff; font-size: 20px; font-weight: 800; cursor: pointer;
+    }
+
+    .switch-btn {
+      position: absolute; right: 16px; bottom: 16px; z-index: 40;
+      width: 64px; height: 64px; border-radius: 14px; border: 1px solid #1e3a8a;
+      background: rgba(0,0,0,.62); color: #fff; font-size: 30px; display: grid; place-items: center;
+      cursor: grab; transition: transform .08s;
+    }
+    .switch-btn:active { transform: scale(.96); }
+    .switch-btn.dragging { transition: none; cursor: grabbing; }
+
+    .split-container { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; padding: 10px; overflow: auto; }
+    .split-map, .split-image { min-height: 180px; flex: 1; border-radius: 12px; overflow: hidden; background: #eef2f6; position: relative; }
+    .distance-card { border: 1px solid #dbe3ef; border-radius: 12px; padding: 10px 12px; font-weight: 700; color: #1e3a8a; text-align: center; background: #fff; }
+    .result-description { font-size: clamp(1rem, 2.2vw, 1.25rem); font-weight: 700; color: #0f172a; line-height: 1.35; }
+    .result-year-row { margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .year-chip { border: 2px solid #1e3a8a; border-radius: 10px; padding: 4px 10px; font-weight: 800; }
+    .year-diff { display: flex; align-items: center; color: #334155; font-weight: 700; }
+
+    .year-slider-area { border: 1px solid #dbe3ef; border-radius: 12px; padding: 10px 12px; background: #f8fafc; }
+    .year-display { text-align: center; font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; }
+    input[type="range"] { width: 100%; accent-color: #1e3a8a; }
+
+    .round-score-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .score-card { border: 1px solid #dbe3ef; border-radius: 12px; background: #f8fafc; padding: 8px; text-align: center; }
+    .score-card span { display: block; font-size: .74rem; color: #64748b; }
+    .score-card strong { font-size: 1.05rem; color: #0f1f4a; }
+
+    .big-btn {
+      border: none; border-radius: 999px; padding: 11px 14px; font-weight: 800; color: #fff;
+      background: #1e3a8a; cursor: pointer;
+    }
+    .big-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+    .modal {
+      position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.6);
+      backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
+    }
+    .modal-content {
+      position: relative; width: min(560px, 92vw); background: #fff; border-radius: 20px;
+      padding: 1.6rem 1.6rem 1.2rem; box-shadow: 0 16px 32px rgba(0,0,0,.22);
+    }
+    .modal-close { position: absolute; right: 12px; top: 10px; cursor: pointer; font-size: 1.4rem; color: #1e3a8a; }
+    .rules-list { list-style: none; margin-top: 4px; }
+    .rules-list li { margin-bottom: 10px; display: flex; gap: 8px; line-height: 1.35; }
+    .rule-bullet { width: 10px; height: 10px; background: #1e3a8a; transform: rotate(45deg); margin-top: 6px; flex: 0 0 auto; }
+    .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+    .modal-btn { border: none; border-radius: 999px; padding: 10px 18px; background: #1e3a8a; color: #fff; font-weight: 700; cursor: pointer; }
+
+    .ymaps-copyrights-pane, .ymaps-logo, .ymaps-copyright,
+    [class*="ymaps-copyright"], [class*="ymaps-logo"],
+    .ymaps-2-1-79-copyright, .ymaps-2-1-79-copyrights-pane {
+      display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important;
+    }
+  </style>
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=c03f89a7-f0e9-47b7-95f0-57e818aa7701&lang=ru_RU" type="text/javascript"></script>
 </head>
 <body>
-    <!-- Модальное окно выбора (новый/продолжить) -->
-    <div id="gameModeModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-close" id="closeGameModeModal">✕</div>
-            <p id="modalQuestion">Выберите действие</p>
-            <div id="modalButtons" class="modal-buttons"></div>
-        </div>
+  <div id="gameModeModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-close" id="closeGameModeModal">✕</div>
+      <p id="modalQuestion">Выберите действие</p>
+      <div id="modalButtons" class="modal-buttons"></div>
     </div>
-    <!-- Модальное окно с правилами -->
-    <div id="rulesModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-close" id="closeRulesModal">✕</div>
-            <p style="font-size: 1.3rem; font-weight: bold; text-align: center; margin-bottom: 1rem;">📜 Правила игры</p>
-            <ul class="rules-list">
-                <li><span class="rule-bullet"></span> <strong>Цель:</strong> Угадайте место на карте и примерный год снимка.</li>
-                <li><span class="rule-bullet"></span> <strong>Ход:</strong> Выберите точку на карте и год на ползунке, затем нажмите «Проверить».</li>
-                <li><span class="rule-bullet"></span> <strong>Очки за место:</strong> до 500 очков. 150 м и ближе — максимум, 2500 км и дальше — 0.</li>
-                <li><span class="rule-bullet"></span> <strong>Очки за год:</strong> до 500 очков. Чем меньше ошибка, тем выше результат.</li>
-            </ul>
-            <div class="modal-buttons">
-                <button class="modal-btn" id="closeRulesBtn">Понятно!</button>
-            </div>
-        </div>
-    </div>
-    <!-- Финальное окно с кубком -->
-    <div id="finalModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-close" id="closeFinalModal">✕</div>
-            <div style="font-size: 4rem;">🏆</div>
-            <p id="finalMessage" style="font-size: 1.2rem; margin: 1rem 0;"></p>
-            <div id="finalButtons" class="modal-buttons"></div>
-        </div>
-    </div>
+  </div>
 
-    <!-- Меню -->
-    <div id="menuScreen" class="screen menu-screen">
-        <div class="menu-title">HistoryGuesser</div>
-        <div class="menu-buttons">
-            <button id="singlePlayerBtn" class="menu-btn">Одиночная игра</button>
-            <button id="multiPlayerBtn" class="menu-btn">Многопользовательская</button>
-        </div>
-        <div class="help-btn" id="helpBtn">?</div>
+  <div id="rulesModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-close" id="closeRulesModal">✕</div>
+      <p style="font-size:1.25rem;font-weight:800;text-align:center;margin-bottom:0.8rem;">📜 Правила игры</p>
+      <ul class="rules-list">
+        <li><span class="rule-bullet"></span><strong>Цель:</strong> определить место съёмки исторической фотографии и указать год.</li>
+        <li><span class="rule-bullet"></span><strong>Действие:</strong> выберите точку на карте и установите год на ползунке.</li>
+        <li><span class="rule-bullet"></span><strong>Очки за место:</strong> 500 баллов при ошибке до 150 м; 0 баллов при 2500 км и более.</li>
+        <li><span class="rule-bullet"></span><strong>Очки за год:</strong> максимум 500 баллов, далее снижение пропорционально ошибке.</li>
+      </ul>
+      <div class="modal-buttons"><button class="modal-btn" id="closeRulesBtn">Понятно</button></div>
     </div>
+  </div>
 
-    <!-- Игровой экран -->
-    <div id="gameScreen" class="screen game-screen hidden">
-        <div class="game-header">
-            <div class="header-left">
-                <button id="backToMenuBtn" class="back-btn">← Назад</button>
-                <div class="round-badge" id="roundBadge">Раунд 1/5</div>
-            </div>
-            <div class="game-title">HistoryGuesser</div>
-            <div class="header-spacer"></div>
-        </div>
-        <div class="info-block" id="infoBlock">
-            Выберите место на карте и год
-        </div>
-        <div class="gameplay-layout">
-        <div id="mainArea" class="main-area">
-            <div id="toggleView" class="toggle-view">
-                <div class="view-container">
-                    <div id="mapView" class="view"></div>
-                    <div id="imageView" class="view view-hidden">
-                        <div class="image-wrapper" id="imageWrapper">
-                            <img id="historicalImageBg" class="historical-img historical-bg" src="" alt="" aria-hidden="true">
-                            <img id="historicalImage" class="historical-img historical-fg" src="" alt="Историческое фото">
-                            <div class="image-overlay" aria-hidden="true"></div>
-                        </div>
-                        <div class="zoom-buttons">
-                            <button class="zoom-btn" id="zoomOut">−</button>
-                            <button class="zoom-btn" id="zoomIn">+</button>
-                        </div>
-                    </div>
-                    <div class="switch-btn" id="switchViewBtn">
-                        <span class="switch-icon" id="switchIcon">🗺️</span>
-                    </div>
-                    <div class="selected-info" id="selectedInfo">🏆 <span id="totalScore">0</span></div>
-                </div>
-            </div>
-            <div id="splitView" class="split-container hidden">
-                <div id="splitMap" class="split-map"></div>
-                <div id="distanceCard" class="distance-card">Разница: —</div>
-                <div class="result-main">
-                    <div class="result-description" id="resultDescription">—</div>
-                    <div class="result-year-row">
-                        <div class="year-chip">Год: <span id="correctYearChip">—</span></div>
-                        <div class="year-diff" id="yearDiffText">Разница: —</div>
-                    </div>
-                </div>
-                <div id="splitImage" class="split-image">
-                    <div class="image-wrapper" id="splitImageWrapper">
-                        <img id="splitHistoricalImage" class="historical-img historical-fg" src="" alt="Историческое фото">
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="control-bar">
-            <div id="yearSliderArea" class="year-slider-area">
-                <div class="year-display" id="yearValueDisplay">1950</div>
-                <input type="range" id="yearSlider" min="1850" max="2024" step="1" value="1950">
-            </div>
-            <div id="roundScoreCards" class="round-score-cards hidden">
-                <div class="score-card"><span>За место</span><strong id="distancePoints">0</strong></div>
-                <div class="score-card"><span>За год</span><strong id="yearPoints">0</strong></div>
-                <div class="score-card"><span>За раунд</span><strong id="roundPoints">0</strong></div>
-            </div>
-            <button id="actionBtn" class="big-btn">✅ ПРОВЕРИТЬ</button>
-        </div>
-        </div>
+  <div id="finalModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-close" id="closeFinalModal">✕</div>
+      <div style="font-size:3.5rem;text-align:center;">🏆</div>
+      <p id="finalMessage" style="font-size:1.1rem;text-align:center;margin:.8rem 0;"></p>
+      <div id="finalButtons" class="modal-buttons"></div>
+    </div>
+  </div>
+
+  <div id="menuScreen" class="screen menu-screen">
+    <div class="menu-title">HistoryGuesser</div>
+    <div class="menu-buttons">
+      <button id="singlePlayerBtn" class="menu-btn">Одиночная игра</button>
+      <button id="multiPlayerBtn" class="menu-btn">Многопользовательская</button>
+    </div>
+    <div class="help-btn" id="helpBtn">?</div>
+  </div>
+
+  <div id="gameScreen" class="screen hidden">
+    <div class="game-header">
+      <button id="backToMenuBtn" class="back-btn">← Назад</button>
+      <div class="game-title">HistoryGuesser</div>
+      <div style="width:54px"></div>
     </div>
 
-    <script>
-        (function() {
-            // ----- БАЗА ВОПРОСОВ (8 штук, выбираем 5 случайных) -----
-            const FULL_QUESTIONS = [
-                { imageUrl: "img/red_square.jpg", correctLat: 55.7537, correctLng: 37.6199, correctYear: 1905, description: "Красная площадь, Москва" },
-                { imageUrl: "img/mogilev.jpg", correctLat: 53.8944, correctLng: 30.3315, correctYear: 1916, description: "Могилёв. Николай II (в центре) среди военных представителей союзных держав." },
-				{ imageUrl: "img/1917 miting.jpg", correctLat: 55.7619, correctLng: 37.6104, correctYear: 1917, description: "Митинг у памятника генерал-адъютанту Михаилу Скобелеву во время революции 1917г." },
-				{ imageUrl: "img/balaklava.jpg", correctLat: 45.0237, correctLng: 35.4031, correctYear: 1855, description: "Генуэзская крепость в годы Крымской войны. Крым, Таврическая гул., г. Балаклава." },
-				{ imageUrl: "img/gorko.jpg", correctLat: 55.7651, correctLng: 37.6043, correctYear: 1941, description: "Сотрудник ОРУД в шлеме СШ-40 и с карабином Мосина обр. 1938 г. стоит на посту на улице Горького (Ныне ул. Тверская)" },
-            ];
-            const QUESTIONS_PER_GAME = 5;
-            function shuffleArray(arr) {
-                for (let i = arr.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [arr[i], arr[j]] = [arr[j], arr[i]];
-                }
-                return arr;
-            }
-            function getRandomQuestions() {
-                const shuffled = shuffleArray([...FULL_QUESTIONS]);
-                return shuffled.slice(0, QUESTIONS_PER_GAME);
-            }
-
-            // DOM элементы
-            const yearSlider = document.getElementById('yearSlider');
-            const yearValueDisplay = document.getElementById('yearValueDisplay');
-            const actionBtn = document.getElementById('actionBtn');
-            const totalScoreSpan = document.getElementById('totalScore');
-            const historicalImg = document.getElementById('historicalImage');
-            const splitHistoricalImg = document.getElementById('splitHistoricalImage');
-            const switchViewBtn = document.getElementById('switchViewBtn');
-            const mapView = document.getElementById('mapView');
-            const imageView = document.getElementById('imageView');
-            const infoBlock = document.getElementById('infoBlock');
-            const zoomInBtn = document.getElementById('zoomIn');
-            const zoomOutBtn = document.getElementById('zoomOut');
-            const imageWrapper = document.getElementById('imageWrapper');
-            const splitImageWrapper = document.getElementById('splitImageWrapper');
-            const toggleViewDiv = document.getElementById('toggleView');
-            const splitViewDiv = document.getElementById('splitView');
-            const splitMapDiv = document.getElementById('splitMap');
-            const yearSliderArea = document.getElementById('yearSliderArea');
-            const selectedInfoDiv = document.getElementById('selectedInfo');
-            const distanceCard = document.getElementById('distanceCard');
-            const roundBadge = document.getElementById('roundBadge');
-            const resultDescription = document.getElementById('resultDescription');
-            const correctYearChip = document.getElementById('correctYearChip');
-            const yearDiffText = document.getElementById('yearDiffText');
-            const roundScoreCards = document.getElementById('roundScoreCards');
-            const distancePoints = document.getElementById('distancePoints');
-            const yearPoints = document.getElementById('yearPoints');
-            const roundPoints = document.getElementById('roundPoints');
-
-            // Переменные игры
-            let currentQuestions = [];
-            let currentIndex = 0;
-            let userMarker = null, correctMarker = null, distanceLine = null;
-            let selectedLat = null, selectedLng = null;
-            let selectedYear = 1950;
-            let totalPoints = 0;
-            let currentQuestionPoints = 0;
-            let questionAnswered = false;
-            let map = null;
-            let currentView = 'image';
-            let splitMapInstance = null;
-            let isWaitingForNext = false;
-
-            // --- Управление изображением: центрирование, zoom, pan, ограничения ---
-            const OVERDRAW_PX = 25;
-            const MAX_SCALE = 6;
-
-            let imgW = 0, imgH = 0;
-            let scale = 1, translateX = 0, translateY = 0;
-            let minScale = 0.2;
-            let containScale = 0.2;
-            let coverScale = 1;
-            let currentImageUrl = '';
-            let pointerState = new Map();
-            let gestureStart = null;
-
-            const imageBg = document.getElementById('historicalImageBg');
-
-            function clamp(value, min, max) {
-                return Math.min(max, Math.max(min, value));
-            }
-
-            function getStageRect() {
-                return imageWrapper.getBoundingClientRect();
-            }
-
-            function getScaleMetrics() {
-                if (!imgW || !imgH) return null;
-                const rect = getStageRect();
-                if (!rect.width || !rect.height) return null;
-                const cw = rect.width / imgW;
-                const ch = rect.height / imgH;
-                const contain = Math.min(cw, ch);
-                const cover = Math.max(cw, ch);
-                return { rect, contain, cover };
-            }
-
-            function updateBackgroundLayer() {
-                if (!imageBg) return;
-                const metrics = getScaleMetrics();
-                if (!metrics) return;
-                const { rect, cover } = metrics;
-                const bgScaledW = imgW * cover;
-                const bgScaledH = imgH * cover;
-                const bgX = (rect.width - bgScaledW) / 2;
-                const bgY = (rect.height - bgScaledH) / 2;
-                imageBg.style.width = `${imgW}px`;
-                imageBg.style.height = `${imgH}px`;
-                imageBg.style.transform = `translate(${bgX}px, ${bgY}px) scale(${cover})`;
-            }
-
-            function updateSplitPreview() {
-                if (!splitHistoricalImg || splitViewDiv.classList.contains('hidden')) return;
-                const rect = splitImageWrapper.getBoundingClientRect();
-                if (!rect.width || !rect.height || !imgW || !imgH) return;
-
-                const scaleFit = Math.min(rect.width / imgW, rect.height / imgH);
-                const splitW = imgW * scaleFit;
-                const splitH = imgH * scaleFit;
-                const splitX = (rect.width - splitW) / 2;
-                const splitY = (rect.height - splitH) / 2;
-
-                splitHistoricalImg.style.width = `${imgW}px`;
-                splitHistoricalImg.style.height = `${imgH}px`;
-                splitHistoricalImg.style.transformOrigin = '0 0';
-                splitHistoricalImg.style.transform = `translate(${splitX}px, ${splitY}px) scale(${scaleFit})`;
-            }
-
-
-            function updateForegroundLayer() {
-                historicalImg.style.width = `${imgW}px`;
-                historicalImg.style.height = `${imgH}px`;
-                historicalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-            }
-
-            function getPanBounds(nextScale = scale) {
-                const rect = getStageRect();
-                const scaledW = imgW * nextScale;
-                const scaledH = imgH * nextScale;
-                const centerX = (rect.width - scaledW) / 2;
-                const centerY = (rect.height - scaledH) / 2;
-
-                let minX, maxX, minY, maxY;
-
-                if (scaledW <= rect.width) {
-                    minX = centerX - OVERDRAW_PX;
-                    maxX = centerX + OVERDRAW_PX;
-                } else {
-                    minX = rect.width - scaledW - OVERDRAW_PX;
-                    maxX = OVERDRAW_PX;
-                }
-
-                if (scaledH <= rect.height) {
-                    minY = centerY - OVERDRAW_PX;
-                    maxY = centerY + OVERDRAW_PX;
-                } else {
-                    minY = rect.height - scaledH - OVERDRAW_PX;
-                    maxY = OVERDRAW_PX;
-                }
-
-                return { minX, maxX, minY, maxY, centerX, centerY };
-            }
-
-            function updateTransforms() {
-                updateForegroundLayer();
-                updateBackgroundLayer();
-
-                if (splitHistoricalImg && !splitViewDiv.classList.contains('hidden')) {
-                    const rect = splitImageWrapper.getBoundingClientRect();
-                    if (rect.width > 0 && rect.height > 0 && imgW > 0 && imgH > 0) {
-                        const scaleFit = Math.min(rect.width / imgW, rect.height / imgH);
-                        const splitX = (rect.width - imgW * scaleFit) / 2;
-                        const splitY = (rect.height - imgH * scaleFit) / 2;
-                        splitHistoricalImg.style.transform = `translate(${splitX}px, ${splitY}px) scale(${scaleFit})`;
-                    }
-                }
-            }
-
-            function centerImage(softClamp = true) {
-                if (!imgW || !imgH) return;
-                const metrics = getScaleMetrics();
-                if (!metrics) return;
-                translateX = (metrics.rect.width - imgW * scale) / 2;
-                translateY = (metrics.rect.height - imgH * scale) / 2;
-                if (softClamp) applyBounds();
-                else updateTransforms();
-            }
-
-            function applyBounds() {
-                if (!imgW || !imgH) return;
-                const bounds = getPanBounds(scale);
-                translateX = clamp(translateX, bounds.minX, bounds.maxX);
-                translateY = clamp(translateY, bounds.minY, bounds.maxY);
-                updateTransforms();
-            }
-
-            function updateScales() {
-                const metrics = getScaleMetrics();
-                if (!metrics) return false;
-                containScale = Math.max(metrics.contain, 0.15);
-                coverScale = metrics.cover;
-                minScale = Math.max(0.15, containScale * 0.9);
-                return true;
-            }
-
-            function resetImageState() {
-                if (!updateScales()) return;
-                scale = containScale;
-                centerImage(false);
-                applyBounds();
-            }
-
-            function setScale(nextScale, anchorX = null, anchorY = null) {
-                if (!imgW || !imgH) return;
-                const rect = getStageRect();
-                if (!rect.width || !rect.height) return;
-
-                const oldScale = scale;
-                const clamped = clamp(nextScale, minScale, MAX_SCALE);
-                if (clamped === oldScale) return;
-
-                const ax = anchorX === null ? rect.width / 2 : anchorX;
-                const ay = anchorY === null ? rect.height / 2 : anchorY;
-
-                const imagePointX = (ax - translateX) / oldScale;
-                const imagePointY = (ay - translateY) / oldScale;
-
-                scale = clamped;
-                translateX = ax - imagePointX * scale;
-                translateY = ay - imagePointY * scale;
-
-                applyBounds();
-            }
-
-            function zoomBy(factor, anchorX = null, anchorY = null) {
-                setScale(scale * factor, anchorX, anchorY);
-            }
-
-            function loadImage() {
-                const q = currentQuestions[currentIndex];
-                currentImageUrl = q.imageUrl;
-
-                const img = new Image();
-                img.onload = () => {
-                    imgW = img.width;
-                    imgH = img.height;
-
-                    historicalImg.src = q.imageUrl;
-                    historicalImg.style.width = `${imgW}px`;
-                    historicalImg.style.height = `${imgH}px`;
-
-                    if (imageBg) {
-                        imageBg.src = q.imageUrl;
-                        imageBg.style.width = `${imgW}px`;
-                        imageBg.style.height = `${imgH}px`;
-                    }
-
-                    if (splitHistoricalImg) {
-                        splitHistoricalImg.src = q.imageUrl;
-                        splitHistoricalImg.style.width = `${imgW}px`;
-                        splitHistoricalImg.style.height = `${imgH}px`;
-                    }
-
-                    requestAnimationFrame(() => {
-                        resetImageState();
-                    });
-                };
-
-                img.onerror = () => {
-                    imgW = 400;
-                    imgH = 260;
-                    const fallback = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="100%" height="100%" fill="#6c757d"/><text x="200" y="130" text-anchor="middle" fill="white" font-size="18">Не загружено</text><text x="200" y="170" text-anchor="middle" fill="#f8f9fa" font-size="14">${q.description}</text></svg>`)}`;
-
-                    historicalImg.src = fallback;
-                    historicalImg.style.width = '400px';
-                    historicalImg.style.height = '260px';
-
-                    if (imageBg) {
-                        imageBg.src = fallback;
-                        imageBg.style.width = '400px';
-                        imageBg.style.height = '260px';
-                    }
-
-                    if (splitHistoricalImg) {
-                        splitHistoricalImg.src = fallback;
-                        splitHistoricalImg.style.width = '400px';
-                        splitHistoricalImg.style.height = '260px';
-                    }
-
-                    requestAnimationFrame(() => {
-                        resetImageState();
-                    });
-                };
-
-                img.src = q.imageUrl;
-            }
-
-            function onPointerDown(e) {
-                if (currentView !== 'image') return;
-                if (e.button !== undefined && e.button !== 0) return;
-
-                imageWrapper.setPointerCapture?.(e.pointerId);
-                pointerState.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-                if (pointerState.size === 1) {
-                    gestureStart = {
-                        type: 'drag',
-                        pointerId: e.pointerId,
-                        startX: e.clientX,
-                        startY: e.clientY,
-                        startTranslateX: translateX,
-                        startTranslateY: translateY
-                    };
-                } else if (pointerState.size === 2) {
-                    const [p1, p2] = [...pointerState.values()];
-                    gestureStart = {
-                        type: 'pinch',
-                        dist: Math.hypot(p1.x - p2.x, p1.y - p2.y),
-                        scale,
-                        midpoint: {
-                            x: (p1.x + p2.x) / 2,
-                            y: (p1.y + p2.y) / 2
-                        }
-                    };
-                }
-            }
-
-            function onPointerMove(e) {
-                if (currentView !== 'image') return;
-                if (!pointerState.has(e.pointerId)) return;
-
-                pointerState.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-                if (pointerState.size === 1 && gestureStart?.type === 'drag' && gestureStart.pointerId === e.pointerId) {
-                    translateX = gestureStart.startTranslateX + (e.clientX - gestureStart.startX);
-                    translateY = gestureStart.startTranslateY + (e.clientY - gestureStart.startY);
-                    applyBounds();
-                    return;
-                }
-
-                if (pointerState.size === 2) {
-                    const [p1, p2] = [...pointerState.values()];
-                    const newDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-                    if (!gestureStart || gestureStart.type !== 'pinch' || !gestureStart.dist) return;
-
-                    const factor = newDist / gestureStart.dist;
-                    const newScale = gestureStart.scale * factor;
-                    const rect = imageWrapper.getBoundingClientRect();
-                    const midX = (p1.x + p2.x) / 2 - rect.left;
-                    const midY = (p1.y + p2.y) / 2 - rect.top;
-                    setScale(newScale, midX, midY);
-                }
-            }
-
-            function endPointer(e) {
-                if (pointerState.has(e.pointerId)) {
-                    pointerState.delete(e.pointerId);
-                }
-
-                if (pointerState.size === 0) {
-                    gestureStart = null;
-                } else if (pointerState.size === 1) {
-                    const [remainingId, remainingPoint] = [...pointerState.entries()][0];
-                    gestureStart = {
-                        type: 'drag',
-                        pointerId: remainingId,
-                        startX: remainingPoint.x,
-                        startY: remainingPoint.y,
-                        startTranslateX: translateX,
-                        startTranslateY: translateY
-                    };
-                } else if (pointerState.size === 2) {
-                    const [p1, p2] = [...pointerState.values()];
-                    gestureStart = {
-                        type: 'pinch',
-                        dist: Math.hypot(p1.x - p2.x, p1.y - p2.y),
-                        scale,
-                        midpoint: {
-                            x: (p1.x + p2.x) / 2,
-                            y: (p1.y + p2.y) / 2
-                        }
-                    };
-                }
-            }
-
-            function onWheel(e) {
-                if (currentView !== 'image') return;
-                e.preventDefault();
-                const rect = imageWrapper.getBoundingClientRect();
-                const anchorX = e.clientX - rect.left;
-                const anchorY = e.clientY - rect.top;
-                const factor = e.deltaY > 0 ? 0.92 : 1.08;
-                zoomBy(factor, anchorX, anchorY);
-            }
-
-            function onDoubleTapReset() {
-                resetImageState();
-            }
-            // --- Новая система подсчёта очков (целые числа, макс 1000) ---
-            function calcPoints(userLat, userLng, userYear, correctLat, correctLng, correctYear) {
-                const R = 6371;
-                const dLat = (correctLat - userLat) * Math.PI/180;
-                const dLng = (correctLng - userLng) * Math.PI/180;
-                const a = Math.sin(dLat/2)**2 + Math.cos(userLat*Math.PI/180)*Math.cos(correctLat*Math.PI/180)*Math.sin(dLng/2)**2;
-                const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                const yearDiff = Math.abs(userYear - correctYear);
-                let pointsYear = 500 - yearDiff * 10;
-                if (pointsYear < 0) pointsYear = 0;
-                let pointsDist = 0;
-                if (distKm <= 0.15) pointsDist = 500;
-                else if (distKm >= 2500) pointsDist = 0;
-                else pointsDist = Math.round(500 * (1 - (distKm - 0.15) / (2500 - 0.15)));
-                if (pointsDist < 0) pointsDist = 0;
-                const total = pointsYear + pointsDist;
-                return { total, distKm, yearDiff, pointsYear, pointsDist };
-            }
-
-            // --- Яндекс.Карты (только карта, без копирайтов) ---
-            async function initMainMap() {
-                return new Promise((resolve) => {
-                    if (window.ymaps) {
-                        window.ymaps.ready(() => {
-                            map = new window.ymaps.Map("mapView", {
-                                center: [55.7537, 37.6199],
-                                zoom: 6,
-                                controls: ["zoomControl"]
-                            }, {
-                                suppressMapOpenBlock: true,
-                                yandexMapDisablePoiInteractivity: true
-                            });
-                            map.options.set("restrictMapArea", [[41, 19], [82, 190]]);
-                            map.events.add("click", (e) => {
-                                if (questionAnswered || isWaitingForNext) {
-                                    setInfo("⚠️ Вопрос уже проверен! Нажмите «Следующий».", 3000);
-                                    return;
-                                }
-                                const coords = e.get("coords");
-                                selectedLat = coords[0];
-                                selectedLng = coords[1];
-                                if (userMarker) map.geoObjects.remove(userMarker);
-                                userMarker = new window.ymaps.Placemark(coords, { hintContent: "Ваш выбор" }, { preset: "islands#blueCircleIcon" });
-                                map.geoObjects.add(userMarker);
-                                setInfo(`✅ Место выбрано: ${selectedLat.toFixed(2)}°, ${selectedLng.toFixed(2)}°`, 2000);
-                            });
-                            hideCopyrights();
-                            resolve();
-                        });
-                    } else {
-                        setTimeout(() => initMainMap().then(resolve), 100);
-                    }
-                });
-            }
-
-            function hideCopyrights() {
-                const selectors = [
-                    '.ymaps-copyrights-pane', '.ymaps-logo', '.ymaps-copyright',
-                    '[class*="ymaps-copyright"]', '[class*="ymaps-logo"]',
-                    '.ymaps-2-1-79-copyright', '.ymaps-2-1-79-copyrights-pane'
-                ];
-                selectors.forEach(sel => {
-                    document.querySelectorAll(sel).forEach(el => {
-                        el.style.display = 'none';
-                        el.style.visibility = 'hidden';
-                        el.style.opacity = '0';
-                    });
-                });
-            }
-            const observer = new MutationObserver(() => hideCopyrights());
-            observer.observe(document.body, { childList: true, subtree: true });
-
-             function clearMapMarkers() {
-                if (!map) return;
-                if (userMarker) map.geoObjects.remove(userMarker);
-                if (correctMarker) map.geoObjects.remove(correctMarker);
-                if (distanceLine) map.geoObjects.remove(distanceLine);
-                userMarker = null;
-                correctMarker = null;
-                distanceLine = null;
-            }
-
-            function addCorrectMarker(lat,lng,year) {
-                correctMarker = new window.ymaps.Placemark([lat,lng], { hintContent: `✅ Правильное место (год ${year})` }, { preset: "islands#greenCircleIcon" });
-                map.geoObjects.add(correctMarker);
-            }
-
-            function drawLineAndZoom(ul,ulng,cl,clng) {
-                if (distanceLine) map.geoObjects.remove(distanceLine);
-                distanceLine = new window.ymaps.Polyline([[ul,ulng],[cl,clng]], {}, { strokeColor:"#1e3a8a", strokeWidth:3, strokeStyle:"dash" });
-                map.geoObjects.add(distanceLine);
-                const bounds = window.ymaps.util.bounds.fromPoints([[ul,ulng],[cl,clng]]);
-                map.setBounds(bounds, { checkZoomRange:true, zoomMargin:70 });
-            }
-
-            async function initSplitMap() {
-                if (!window.ymaps) return;
-                return new Promise((resolve) => {
-                    window.ymaps.ready(() => {
-                        if (splitMapInstance) splitMapInstance.destroy();
-                        splitMapInstance = new window.ymaps.Map(splitMapDiv, {
-                            center: [55.7537, 37.6199],
-                            zoom: 6,
-                            controls: ["zoomControl"]
-                        }, { suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true });
-                        splitMapInstance.options.set("restrictMapArea",[[41,19],[82,190]]);
-                        if (selectedLat!==null && selectedLng!==null) {
-                            splitMapInstance.geoObjects.add(new window.ymaps.Placemark([selectedLat,selectedLng], { hintContent:"Ваш выбор" }, { preset:"islands#blueCircleIcon" }));
-                        }
-                        splitMapInstance.geoObjects.add(new window.ymaps.Placemark([currentQuestions[currentIndex].correctLat, currentQuestions[currentIndex].correctLng], { hintContent:`✅ Правильное место (год ${currentQuestions[currentIndex].correctYear})` }, { preset:"islands#greenCircleIcon" }));
-                        splitMapInstance.geoObjects.add(new window.ymaps.Polyline([[selectedLat,selectedLng],[currentQuestions[currentIndex].correctLat,currentQuestions[currentIndex].correctLng]], {}, { strokeColor:"#1e3a8a", strokeWidth:3, strokeStyle:"dash" }));
-                        const bounds = window.ymaps.util.bounds.fromPoints([[selectedLat,selectedLng],[currentQuestions[currentIndex].correctLat,currentQuestions[currentIndex].correctLng]]);
-                        splitMapInstance.setBounds(bounds, { checkZoomRange:true, zoomMargin:70 });
-                        hideCopyrights();
-                        resolve();
-                    });
-                });
-            }
-
-            let infoTimeout;
-            function setInfo(msg, dur=3000) {
-                clearTimeout(infoTimeout);
-                infoBlock.innerHTML = msg;
-                infoTimeout = setTimeout(() => {
-                    if (!questionAnswered && !isWaitingForNext) infoBlock.innerHTML = "Выберите место на карте и год";
-                }, dur);
-            }
-
-            function switchView() {
-                if (currentView==='image') {
-                    mapView.classList.remove('view-hidden');
-                    imageView.classList.add('view-hidden');
-                    currentView='map';
-                    document.getElementById('switchIcon').innerHTML='🖼️';
-                    if (map) map.container.fitToViewport();
-                } else {
-                    mapView.classList.add('view-hidden');
-                    imageView.classList.remove('view-hidden');
-                    currentView='image';
-                    document.getElementById('switchIcon').innerHTML='🗺️';
-                    requestAnimationFrame(() => {
-                        resetImageState();
-                    });
-                }
-            }
-            function zoomImage(delta) { if (currentView==='image') zoomBy(delta > 0 ? 1.18 : 0.82); }
-
-            function resetMapToMoscow() {
-                if (map) map.setCenter([55.7537, 37.6199], 6, { duration: 300 });
-            }
-
-            function loadQuestion(savedYear=null) {
-                questionAnswered = false;
-                isWaitingForNext = false;
-                actionBtn.disabled = false;
-                actionBtn.innerText = "✅ ПРОВЕРИТЬ";
-                actionBtn.onclick = handleCheck;
-                setInfo("Выберите место на карте и год", 2000);
-                clearMapMarkers();  // очищаем старые маркеры
-                selectedLat = selectedLng = null;
-                selectedInfoDiv.innerHTML = `🏆 ${Math.floor(totalPoints)}`;
-                const q = currentQuestions[currentIndex];
-                roundBadge.textContent = `Раунд ${currentIndex + 1}/${currentQuestions.length}`;
-                let yearToSet = savedYear !== null ? savedYear : Math.floor(Math.random()*(2024-1850+1))+1850;
-                yearSlider.value = yearToSet;
-                selectedYear = yearToSet;
-                yearValueDisplay.innerText = yearToSet;
-                loadImage();
-                toggleViewDiv.classList.remove('hidden');
-                splitViewDiv.classList.add('hidden');
-                yearSliderArea.style.display = '';
-                roundScoreCards.classList.add('hidden');
-                if (currentView === 'map') switchView();
-                else requestAnimationFrame(() => resetImageState());
-                resetMapToMoscow();
-            }
-
-            function updateYear() {
-                selectedYear = parseInt(yearSlider.value);
-                yearValueDisplay.innerText = selectedYear;
-                saveGameState();
-            }
-            yearSlider.addEventListener('input', () => {
-                if (questionAnswered || isWaitingForNext) {
-                    setInfo("⚠️ Вопрос уже проверен, изменить год нельзя.", 2000);
-                    yearSlider.value = selectedYear;
-                    return;
-                }
-                updateYear();
+    <div id="infoBlock" class="info-block">Определите географическое место, соответствующее историческому фотоматериалу, и укажите наиболее вероятный год съёмки.</div>
+
+    <div class="game-layout">
+      <div id="mainArea" class="main-area">
+        <div id="toggleView" style="position:absolute;inset:0;">
+          <div id="mapView" class="view view-hidden"></div>
+          <div id="imageView" class="view">
+            <div id="imageWrapper" class="image-wrapper">
+              <img id="historicalImageBg" class="historical-img historical-bg" src="" alt="" aria-hidden="true">
+              <img id="historicalImage" class="historical-img" src="" alt="Историческое фото">
+              <div class="image-overlay" aria-hidden="true"></div>
+            </div>
+            <div class="zoom-buttons">
+              <button class="zoom-btn" id="zoomOut">−</button>
+              <button class="zoom-btn" id="zoomIn">+</button>
+            </div>
+          </div>
+
+          <div id="switchViewBtn" class="switch-btn"><span id="switchIcon">🗺️</span></div>
+
+          <div class="overlay-top">
+            <span id="roundBadge">Раунд 1/5</span>
+            <span id="totalScore">0</span>
+          </div>
+        </div>
+
+        <div id="splitView" class="split-container hidden">
+          <div id="splitMap" class="split-map"></div>
+          <div id="distanceCard" class="distance-card">Разница: —</div>
+          <div>
+            <div id="resultDescription" class="result-description">—</div>
+            <div class="result-year-row">
+              <div class="year-chip">Год: <span id="correctYearChip">—</span></div>
+              <div class="year-diff" id="yearDiffText">Разница: —</div>
+            </div>
+          </div>
+          <div class="split-image">
+            <div id="splitImageWrapper" class="image-wrapper"><img id="splitHistoricalImage" class="historical-img" src="" alt="Историческое фото"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-bar">
+        <div id="yearSliderArea" class="year-slider-area">
+          <div id="yearValueDisplay" class="year-display">1950</div>
+          <input type="range" id="yearSlider" min="1850" max="2024" step="1" value="1950">
+        </div>
+
+        <div id="roundScoreCards" class="round-score-cards hidden">
+          <div class="score-card"><span>За место</span><strong id="distancePoints">0</strong></div>
+          <div class="score-card"><span>За год</span><strong id="yearPoints">0</strong></div>
+          <div class="score-card"><span>За раунд</span><strong id="roundPoints">0</strong></div>
+        </div>
+
+        <button id="actionBtn" class="big-btn">✅ ПРОВЕРИТЬ</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const FULL_QUESTIONS = [
+        { imageUrl: 'img/red_square.jpg', correctLat: 55.7537, correctLng: 37.6199, correctYear: 1905, description: 'Красная площадь, Москва' },
+        { imageUrl: 'img/mogilev.jpg', correctLat: 53.8944, correctLng: 30.3315, correctYear: 1916, description: 'Могилёв. Николай II среди военных представителей союзных держав.' },
+        { imageUrl: 'img/1917 miting.jpg', correctLat: 55.7619, correctLng: 37.6104, correctYear: 1917, description: 'Митинг у памятника Михаилу Скобелеву во время революции 1917 года.' },
+        { imageUrl: 'img/balaklava.jpg', correctLat: 45.0237, correctLng: 35.4031, correctYear: 1855, description: 'Генуэзская крепость в годы Крымской войны. Балаклава.' },
+        { imageUrl: 'img/gorko.jpg', correctLat: 55.7651, correctLng: 37.6043, correctYear: 1941, description: 'Пост ОРУД на улице Горького (ныне Тверская), Москва.' }
+      ];
+      const QUESTIONS_PER_GAME = 5;
+      const SAVE_KEY = 'historyguesser_save';
+      const MAX_SCALE = 6;
+      const OVERDRAW_PX = 25;
+
+      const byId = (id) => document.getElementById(id);
+      const yearSlider = byId('yearSlider');
+      const yearValueDisplay = byId('yearValueDisplay');
+      const actionBtn = byId('actionBtn');
+      const totalScoreSpan = byId('totalScore');
+      const roundBadge = byId('roundBadge');
+      const infoBlock = byId('infoBlock');
+      const mapView = byId('mapView');
+      const imageView = byId('imageView');
+      const toggleViewDiv = byId('toggleView');
+      const splitViewDiv = byId('splitView');
+      const splitMapDiv = byId('splitMap');
+      const yearSliderArea = byId('yearSliderArea');
+      const roundScoreCards = byId('roundScoreCards');
+      const distanceCard = byId('distanceCard');
+      const resultDescription = byId('resultDescription');
+      const correctYearChip = byId('correctYearChip');
+      const yearDiffText = byId('yearDiffText');
+      const distancePoints = byId('distancePoints');
+      const yearPoints = byId('yearPoints');
+      const roundPoints = byId('roundPoints');
+      const switchViewBtn = byId('switchViewBtn');
+      const switchIcon = byId('switchIcon');
+
+      const imageWrapper = byId('imageWrapper');
+      const splitImageWrapper = byId('splitImageWrapper');
+      const historicalImg = byId('historicalImage');
+      const historicalImgBg = byId('historicalImageBg');
+      const splitHistoricalImage = byId('splitHistoricalImage');
+
+      let map = null;
+      let splitMap = null;
+      let userMarker = null, correctMarker = null, distanceLine = null;
+      let selectedLat = null, selectedLng = null, selectedYear = 1950;
+      let totalPoints = 0, currentIndex = 0;
+      let currentQuestions = [];
+      let questionAnswered = false;
+      let waitingNext = false;
+      let currentView = 'image';
+
+      let imgW = 0, imgH = 0, scale = 1, translateX = 0, translateY = 0, minScale = 0.15;
+      let pointers = new Map();
+      let gesture = null;
+
+      const shuffle = (arr) => {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      };
+      const randomQuestions = () => shuffle([...FULL_QUESTIONS]).slice(0, QUESTIONS_PER_GAME);
+      const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+      function setInfo(text, timeout = 2200) {
+        infoBlock.innerHTML = text;
+        clearTimeout(setInfo._timer);
+        setInfo._timer = setTimeout(() => {
+          if (!questionAnswered && !waitingNext) {
+            infoBlock.innerHTML = 'Определите место на карте и укажите наиболее вероятный год.';
+          }
+        }, timeout);
+      }
+
+      function saveGameState() {
+        localStorage.setItem(SAVE_KEY, JSON.stringify({ totalPoints, currentIndex, selectedYear, currentQuestions }));
+      }
+      function loadGameState() {
+        const saved = localStorage.getItem(SAVE_KEY);
+        return saved ? JSON.parse(saved) : null;
+      }
+      function clearGameState() { localStorage.removeItem(SAVE_KEY); }
+
+      function calcPoints(userLat, userLng, userYear, correctLat, correctLng, correctYear) {
+        const R = 6371;
+        const dLat = (correctLat - userLat) * Math.PI / 180;
+        const dLng = (correctLng - userLng) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(userLat * Math.PI / 180) * Math.cos(correctLat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        const yearDiff = Math.abs(userYear - correctYear);
+        const pointsYear = Math.max(0, 500 - yearDiff * 10);
+
+        let pointsDist = 0;
+        if (distKm <= 0.15) pointsDist = 500;
+        else if (distKm >= 2500) pointsDist = 0;
+        else pointsDist = Math.round(500 * (1 - (distKm - 0.15) / (2500 - 0.15)));
+
+        return { total: pointsYear + pointsDist, distKm, yearDiff, pointsYear, pointsDist };
+      }
+
+      function hideCopyrights() {
+        const selectors = [
+          '.ymaps-copyrights-pane', '.ymaps-logo', '.ymaps-copyright',
+          '[class*="ymaps-copyright"]', '[class*="ymaps-logo"]',
+          '.ymaps-2-1-79-copyright', '.ymaps-2-1-79-copyrights-pane'
+        ];
+        selectors.forEach((sel) => document.querySelectorAll(sel).forEach((el) => {
+          el.style.display = 'none'; el.style.visibility = 'hidden'; el.style.opacity = '0';
+        }));
+      }
+      new MutationObserver(hideCopyrights).observe(document.body, { childList: true, subtree: true });
+
+      async function initMainMap() {
+        return new Promise((resolve) => {
+          const boot = () => {
+            map = new ymaps.Map('mapView', {
+              center: [55.7537, 37.6199], zoom: 6, controls: ['zoomControl']
+            }, {
+              suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true
             });
-
-            function handleCheck() {
-                if (questionAnswered || isWaitingForNext) {
-                    setInfo("❗ Ты уже получил очки. Нажми «Следующий».", 3000);
-                    return;
-                }
-                if (selectedLat === null) {
-                    setInfo("⚠️ Сначала выбери место на карте!", 3000);
-                    return;
-                }
-                actionBtn.disabled = true;
-                const q = currentQuestions[currentIndex];
-                const res = calcPoints(selectedLat, selectedLng, selectedYear, q.correctLat, q.correctLng, q.correctYear);
-                totalPoints += res.total;
-                totalScoreSpan.innerText = Math.floor(totalPoints);
-                selectedInfoDiv.innerHTML = `🏆 ${Math.floor(totalPoints)}`;
-                setInfo(`Раунд завершён. Проверьте результат и переходите к следующему вопросу.`, 4500);
-                addCorrectMarker(q.correctLat, q.correctLng, q.correctYear);
-                drawLineAndZoom(selectedLat, selectedLng, q.correctLat, q.correctLng);
-                if (userMarker) userMarker.properties.set("hintContent", `📍 Ваш выбор (${selectedYear} г.)<br>Разница: ${res.distKm.toFixed(1)} км`);
-                questionAnswered = true;
-                isWaitingForNext = true;
-                saveGameState();
-                yearSliderArea.style.display = 'none';
-                toggleViewDiv.classList.add('hidden');
-                splitViewDiv.classList.remove('hidden');
-                distanceCard.innerHTML = `Разница в местоположении: ${res.distKm.toFixed(1)} км`;
-                resultDescription.textContent = q.description;
-                correctYearChip.textContent = q.correctYear;
-                yearDiffText.textContent = res.yearDiff === 0 ? 'Разница: 0 лет' : `Разница: ${res.yearDiff} лет`;
-                distancePoints.textContent = res.pointsDist;
-                yearPoints.textContent = res.pointsYear;
-                roundPoints.textContent = res.total;
-                roundScoreCards.classList.remove('hidden');
-                initSplitMap().catch(console.error);
-                splitHistoricalImg.src = historicalImg.src;
-                splitHistoricalImg.style.width = historicalImg.style.width;
-                splitHistoricalImg.style.height = historicalImg.style.height;
-                setTimeout(() => {
-                    if (splitHistoricalImg && splitImageWrapper) {
-                        updateSplitPreview();
-                    }
-                }, 50);
-                actionBtn.innerText = "➡️ СЛЕДУЮЩИЙ ВОПРОС";
-                actionBtn.disabled = false;
-                actionBtn.onclick = () => {
-                    if (!questionAnswered || !isWaitingForNext) return;
-                    currentIndex++;
-                    if (currentIndex < currentQuestions.length) {
-                        loadQuestion();
-                        saveGameState();
-                    } else {
-                        finishGame();
-                    }
-                };
-            }
-
-            function finishGame() {
-                const maxPoints = currentQuestions.length * 1000;
-                const percent = (totalPoints / maxPoints) * 100;
-                const messages = [];
-                if (percent >= 80) {
-                    messages.push("🏆 Ты — настоящий знаток истории!", "🌟 Великолепный результат! Ты мастер!", "🎉 Блестяще! История не имеет секретов от тебя!");
-                } else if (percent >= 50) {
-                    messages.push("👍 Хороший результат! Есть куда расти, но ты молодец!", "📚 Неплохо! Повтори материал и будет ещё лучше!", "🎈 Ты на правильном пути! Продолжай изучать историю!");
-                } else {
-                    messages.push("📖 Попробуй ещё раз! История ждёт тебя.", "⏳ Не отчаивайся! Каждая ошибка – это шаг к знанию.", "💪 Ты можешь лучше! Сыграй снова и улучши результат!");
-                }
-                const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-                const finalModal = document.getElementById('finalModal');
-                const finalMessage = document.getElementById('finalMessage');
-                const finalButtons = document.getElementById('finalButtons');
-                finalMessage.innerHTML = `Ваш итоговый счёт: ${Math.floor(totalPoints)} из ${maxPoints}<br>${randomMessage}`;
-                finalButtons.innerHTML = '';
-                const againBtn = document.createElement('button');
-                againBtn.className = 'modal-btn';
-                againBtn.innerText = 'Попробовать снова';
-                againBtn.onclick = () => {
-                    finalModal.classList.add('hidden');
-                    startGameWithState(false);
-                };
-                const menuBtn = document.createElement('button');
-                menuBtn.className = 'modal-btn secondary';
-                menuBtn.innerText = 'Главное меню';
-                menuBtn.onclick = () => {
-                    finalModal.classList.add('hidden');
-                    gameScreen.classList.add('hidden');
-                    menuScreen.classList.remove('hidden');
-                    if (map) map.destroy();
-                    if (splitMapInstance) splitMapInstance.destroy();
-                };
-                finalButtons.appendChild(againBtn);
-                finalButtons.appendChild(menuBtn);
-                finalModal.classList.remove('hidden');
-                clearGameState();
-            }
-
-            // --- Сохранение / загрузка ---
-            function saveGameState() {
-                const state = { totalPoints, currentIndex, selectedYear, currentQuestions };
-                localStorage.setItem('historyguesser_save', JSON.stringify(state));
-            }
-            function loadGameState() {
-                const saved = localStorage.getItem('historyguesser_save');
-                return saved ? JSON.parse(saved) : null;
-            }
-            function clearGameState() { localStorage.removeItem('historyguesser_save'); }
-
-            // --- Запуск игры с состоянием ---
-              // --- Запуск игры с состоянием ---
-            async function startGameWithState(useSaved = false) {
-                menuScreen.classList.add('hidden');
-                gameScreen.classList.remove('hidden');
-                // Уничтожаем старую карту, если она есть
-                if (map) {
-                    map.destroy();
-                    map = null;
-                }
-                if (splitMapInstance) {
-                    splitMapInstance.destroy();
-                    splitMapInstance = null;
-                }
-                await initMainMap();
-                if (useSaved) {
-                    const saved = loadGameState();
-                    if (saved && saved.currentQuestions && saved.currentIndex < saved.currentQuestions.length) {
-                        currentQuestions = saved.currentQuestions;
-                        totalPoints = saved.totalPoints;
-                        currentIndex = saved.currentIndex;
-                        selectedYear = saved.selectedYear;
-                        totalScoreSpan.innerText = Math.floor(totalPoints);
-                        loadQuestion(saved.selectedYear);
-                        questionAnswered = false;
-                        isWaitingForNext = false;
-                        toggleViewDiv.classList.remove('hidden');
-                        splitViewDiv.classList.add('hidden');
-                        yearSliderArea.style.display = '';
-                        if (currentView === 'map') switchView();
-                        selectedInfoDiv.innerHTML = `🏆 ${Math.floor(totalPoints)}`;
-                    } else {
-                        currentQuestions = getRandomQuestions();
-                        totalPoints = 0;
-                        totalScoreSpan.innerText = "0";
-                        currentIndex = 0;
-                        loadQuestion();
-                        clearGameState();
-                        saveGameState();
-                    }
-                } else {
-                    currentQuestions = getRandomQuestions();
-                    totalPoints = 0;
-                    totalScoreSpan.innerText = "0";
-                    currentIndex = 0;
-                    loadQuestion();
-                    clearGameState();
-                    saveGameState();
-                }
-                mapView.classList.add('view-hidden');
-                imageView.classList.remove('view-hidden');
-                currentView = 'image';
-                document.getElementById('switchIcon').innerHTML = '🗺️';
-                hideCopyrights();
-            }
-
-            // Перетаскивание кнопки переключения карта/фото
-            let switchDrag = null;
-            function clampSwitchPosition(x, y) {
-                const bounds = switchViewBtn.parentElement.getBoundingClientRect();
-                const btnRect = switchViewBtn.getBoundingClientRect();
-                const maxX = bounds.width - btnRect.width - 6;
-                const maxY = bounds.height - btnRect.height - 6;
-                return {
-                    x: clamp(x, 6, maxX),
-                    y: clamp(y, 6, maxY)
-                };
-            }
-            switchViewBtn.addEventListener('pointerdown', (e) => {
-                const rect = switchViewBtn.getBoundingClientRect();
-                const parentRect = switchViewBtn.parentElement.getBoundingClientRect();
-                switchDrag = {
-                    id: e.pointerId,
-                    startX: e.clientX,
-                    startY: e.clientY,
-                    left: rect.left - parentRect.left,
-                    top: rect.top - parentRect.top,
-                    moved: false
-                };
-                switchViewBtn.setPointerCapture?.(e.pointerId);
+            map.options.set('restrictMapArea', [[41, 19], [82, 190]]);
+            map.events.add('click', (e) => {
+              if (questionAnswered || waitingNext) return setInfo('Вопрос уже проверен. Перейдите к следующему.');
+              [selectedLat, selectedLng] = e.get('coords');
+              if (userMarker) map.geoObjects.remove(userMarker);
+              userMarker = new ymaps.Placemark([selectedLat, selectedLng], { hintContent: 'Ваш выбор' }, { preset: 'islands#blueCircleIcon' });
+              map.geoObjects.add(userMarker);
+              setInfo(`Координаты выбраны: ${selectedLat.toFixed(2)}°, ${selectedLng.toFixed(2)}°`, 1800);
             });
-            switchViewBtn.addEventListener('pointermove', (e) => {
-                if (!switchDrag || switchDrag.id !== e.pointerId) return;
-                const dx = e.clientX - switchDrag.startX;
-                const dy = e.clientY - switchDrag.startY;
-                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) switchDrag.moved = true;
-                if (!switchDrag.moved) return;
-                const pos = clampSwitchPosition(switchDrag.left + dx, switchDrag.top + dy);
-                switchViewBtn.style.left = `${pos.x}px`;
-                switchViewBtn.style.top = `${pos.y}px`;
-                switchViewBtn.style.right = 'auto';
-                switchViewBtn.style.bottom = 'auto';
-                switchViewBtn.classList.add('dragging');
-            });
-            switchViewBtn.addEventListener('pointerup', (e) => {
-                if (!switchDrag || switchDrag.id !== e.pointerId) return;
-                const moved = switchDrag.moved;
-                switchDrag = null;
-                switchViewBtn.classList.remove('dragging');
-                if (!moved) switchView();
-            });
+            hideCopyrights();
+            resolve();
+          };
 
-            // --- Модальное окно выбора ---
-            const modal = document.getElementById('gameModeModal');
-            const modalQuestion = document.getElementById('modalQuestion');
-            const modalButtonsDiv = document.getElementById('modalButtons');
-            const closeGameModeModal = document.getElementById('closeGameModeModal');
-            function closeModal() { modal.classList.add('hidden'); }
-            closeGameModeModal.addEventListener('click', closeModal);
-            function showGameModeModal(mode) {
-                if (mode === 'single') {
-                    const hasSave = loadGameState() !== null;
-                    modalQuestion.innerText = hasSave ? "Хотите начать новую игру или продолжить сохранённую?" : "Сохранённая игра не найдена. Начать новую?";
-                    modalButtonsDiv.innerHTML = '';
-                    if (hasSave) {
-                        const newGame = document.createElement('button');
-                        newGame.className='modal-btn'; newGame.innerText = 'Новая игра';
-                        newGame.onclick = () => { closeModal(); startGameWithState(false); };
-                        const contGame = document.createElement('button');
-                        contGame.className='modal-btn secondary'; contGame.innerText = 'Продолжить игру';
-                        contGame.onclick = () => { closeModal(); startGameWithState(true); };
-                        modalButtonsDiv.appendChild(newGame); modalButtonsDiv.appendChild(contGame);
-                    } else {
-                        const newGame = document.createElement('button');
-                        newGame.className='modal-btn'; newGame.innerText = 'Начать новую игру';
-                        newGame.onclick = () => { closeModal(); startGameWithState(false); };
-                        modalButtonsDiv.appendChild(newGame);
-                    }
-                    modal.classList.remove('hidden');
-                } else if (mode === 'multi') {
-                    alert("Многопользовательский режим в разработке. Скоро появится!");
-                }
+          if (window.ymaps) ymaps.ready(boot);
+          else setTimeout(() => initMainMap().then(resolve), 120);
+        });
+      }
+
+      async function initSplitMap() {
+        if (!window.ymaps) return;
+        return new Promise((resolve) => {
+          ymaps.ready(() => {
+            if (splitMap) splitMap.destroy();
+            splitMap = new ymaps.Map(splitMapDiv, { center: [55.7537, 37.6199], zoom: 6, controls: ['zoomControl'] }, {
+              suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true
+            });
+            splitMap.options.set('restrictMapArea', [[41, 19], [82, 190]]);
+
+            if (selectedLat != null && selectedLng != null) {
+              splitMap.geoObjects.add(new ymaps.Placemark([selectedLat, selectedLng], { hintContent: 'Ваш выбор' }, { preset: 'islands#blueCircleIcon' }));
             }
-
-            // --- Правила ---
-            const helpBtn = document.getElementById('helpBtn');
-            const rulesModal = document.getElementById('rulesModal');
-            const closeRulesModalBtn = document.getElementById('closeRulesModal');
-            const closeRulesBtn = document.getElementById('closeRulesBtn');
-            function closeRules() { rulesModal.classList.add('hidden'); }
-            helpBtn.addEventListener('click', () => rulesModal.classList.remove('hidden'));
-            closeRulesModalBtn.addEventListener('click', closeRules);
-            closeRulesBtn.addEventListener('click', closeRules);
-
-            // --- Закрытие финального окна по крестику ---
-            const closeFinalModal = document.getElementById('closeFinalModal');
-            if (closeFinalModal) {
-                closeFinalModal.addEventListener('click', () => {
-                    document.getElementById('finalModal').classList.add('hidden');
-                });
+            const q = currentQuestions[currentIndex];
+            splitMap.geoObjects.add(new ymaps.Placemark([q.correctLat, q.correctLng], { hintContent: 'Правильное место' }, { preset: 'islands#greenCircleIcon' }));
+            if (selectedLat != null && selectedLng != null) {
+              splitMap.geoObjects.add(new ymaps.Polyline([[selectedLat, selectedLng], [q.correctLat, q.correctLng]], {}, { strokeColor: '#1e3a8a', strokeWidth: 3, strokeStyle: 'dash' }));
+              const bounds = ymaps.util.bounds.fromPoints([[selectedLat, selectedLng], [q.correctLat, q.correctLng]]);
+              splitMap.setBounds(bounds, { checkZoomRange: true, zoomMargin: 70 });
             }
+            hideCopyrights();
+            resolve();
+          });
+        });
+      }
 
-            // --- Переключение между меню и игрой ---
-            const menuScreen = document.getElementById('menuScreen');
-            const gameScreen = document.getElementById('gameScreen');
-            const singleBtn = document.getElementById('singlePlayerBtn');
-            const multiBtn = document.getElementById('multiPlayerBtn');
-            const backBtn = document.getElementById('backToMenuBtn');
+      function clearMapGraphics() {
+        if (!map) return;
+        if (userMarker) map.geoObjects.remove(userMarker);
+        if (correctMarker) map.geoObjects.remove(correctMarker);
+        if (distanceLine) map.geoObjects.remove(distanceLine);
+        userMarker = correctMarker = distanceLine = null;
+      }
 
-            singleBtn.addEventListener('click', () => showGameModeModal('single'));
-            multiBtn.addEventListener('click', () => showGameModeModal('multi'));
-            backBtn.addEventListener('click', () => {
-                gameScreen.classList.add('hidden');
-                menuScreen.classList.remove('hidden');
-                if (map) map.destroy();
-                if (splitMapInstance) splitMapInstance.destroy();
-                closeModal();
-                const finalModal = document.getElementById('finalModal');
-                finalModal.classList.add('hidden');
-            });
+      function drawAnswerOnMainMap(q) {
+        correctMarker = new ymaps.Placemark([q.correctLat, q.correctLng], { hintContent: 'Правильное место' }, { preset: 'islands#greenCircleIcon' });
+        map.geoObjects.add(correctMarker);
+        if (selectedLat == null || selectedLng == null) return;
+        distanceLine = new ymaps.Polyline([[selectedLat, selectedLng], [q.correctLat, q.correctLng]], {}, { strokeColor: '#1e3a8a', strokeWidth: 3, strokeStyle: 'dash' });
+        map.geoObjects.add(distanceLine);
+        const bounds = ymaps.util.bounds.fromPoints([[selectedLat, selectedLng], [q.correctLat, q.correctLng]]);
+        map.setBounds(bounds, { checkZoomRange: true, zoomMargin: 70 });
+      }
 
-            // Подключаем обработчики изображения
-            imageWrapper.addEventListener('pointerdown', onPointerDown);
-            imageWrapper.addEventListener('pointermove', onPointerMove);
-            imageWrapper.addEventListener('pointerup', endPointer);
-            imageWrapper.addEventListener('pointercancel', endPointer);
-            imageWrapper.addEventListener('pointerleave', endPointer);
-            imageWrapper.addEventListener('wheel', onWheel, { passive: false });
-            imageWrapper.addEventListener('dblclick', onDoubleTapReset);
-            imageWrapper.style.cursor = 'grab';
+      function stageRect() { return imageWrapper.getBoundingClientRect(); }
+      function metrics() {
+        const rect = stageRect();
+        if (!imgW || !imgH || !rect.width || !rect.height) return null;
+        const contain = Math.min(rect.width / imgW, rect.height / imgH);
+        const cover = Math.max(rect.width / imgW, rect.height / imgH);
+        return { rect, contain, cover };
+      }
+      function panBounds(nextScale = scale) {
+        const rect = stageRect();
+        const scaledW = imgW * nextScale;
+        const scaledH = imgH * nextScale;
+        const centerX = (rect.width - scaledW) / 2;
+        const centerY = (rect.height - scaledH) / 2;
 
-            zoomInBtn.addEventListener('click', () => zoomBy(1.18));
-            zoomOutBtn.addEventListener('click', () => zoomBy(0.82));
+        const minX = scaledW <= rect.width ? centerX - OVERDRAW_PX : rect.width - scaledW - OVERDRAW_PX;
+        const maxX = scaledW <= rect.width ? centerX + OVERDRAW_PX : OVERDRAW_PX;
+        const minY = scaledH <= rect.height ? centerY - OVERDRAW_PX : rect.height - scaledH - OVERDRAW_PX;
+        const maxY = scaledH <= rect.height ? centerY + OVERDRAW_PX : OVERDRAW_PX;
+        return { minX, maxX, minY, maxY };
+      }
 
-            window.addEventListener('resize', () => {
-                if (!gameScreen.classList.contains('hidden') && !questionAnswered && currentView === 'image') {
-                    requestAnimationFrame(() => {
-                        resetImageState();
-                    });
-                } else if (map) {
-                    map.container.fitToViewport();
-                }
-                if (!splitViewDiv.classList.contains('hidden') && splitHistoricalImg && imgW > 0) {
-                    updateSplitPreview();
-                    if (splitMapInstance) splitMapInstance.container.fitToViewport();
-                }
-                hideCopyrights();
-            });
-        })();
-    </script>
+      function applyTransforms() {
+        historicalImg.style.width = `${imgW}px`;
+        historicalImg.style.height = `${imgH}px`;
+        historicalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+
+        const m = metrics();
+        if (m) {
+          const bgW = imgW * m.cover;
+          const bgH = imgH * m.cover;
+          const bgX = (m.rect.width - bgW) / 2;
+          const bgY = (m.rect.height - bgH) / 2;
+          historicalImgBg.style.width = `${imgW}px`;
+          historicalImgBg.style.height = `${imgH}px`;
+          historicalImgBg.style.transform = `translate(${bgX}px, ${bgY}px) scale(${m.cover})`;
+        }
+      }
+      function fitImage() {
+        const m = metrics();
+        if (!m) return;
+        minScale = Math.max(.15, m.contain * .9);
+        scale = m.contain;
+        translateX = (m.rect.width - imgW * scale) / 2;
+        translateY = (m.rect.height - imgH * scale) / 2;
+        applyBounds();
+      }
+      function applyBounds() {
+        const b = panBounds();
+        translateX = clamp(translateX, b.minX, b.maxX);
+        translateY = clamp(translateY, b.minY, b.maxY);
+        applyTransforms();
+      }
+      function setScale(nextScale, ax = null, ay = null) {
+        const rect = stageRect();
+        if (!rect.width || !rect.height) return;
+        const old = scale;
+        const s = clamp(nextScale, minScale, MAX_SCALE);
+        if (s === old) return;
+        const x = ax ?? rect.width / 2;
+        const y = ay ?? rect.height / 2;
+        const imgX = (x - translateX) / old;
+        const imgY = (y - translateY) / old;
+        scale = s;
+        translateX = x - imgX * scale;
+        translateY = y - imgY * scale;
+        applyBounds();
+      }
+
+      function updateSplitImagePreview() {
+        if (splitViewDiv.classList.contains('hidden') || !imgW || !imgH) return;
+        const rect = splitImageWrapper.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const k = Math.min(rect.width / imgW, rect.height / imgH);
+        const x = (rect.width - imgW * k) / 2;
+        const y = (rect.height - imgH * k) / 2;
+        splitHistoricalImage.style.width = `${imgW}px`;
+        splitHistoricalImage.style.height = `${imgH}px`;
+        splitHistoricalImage.style.transform = `translate(${x}px, ${y}px) scale(${k})`;
+      }
+
+      function loadImage(url, description) {
+        const img = new Image();
+        img.onload = () => {
+          imgW = img.width; imgH = img.height;
+          [historicalImg.src, historicalImgBg.src, splitHistoricalImage.src] = [url, url, url];
+          requestAnimationFrame(() => { fitImage(); updateSplitImagePreview(); });
+        };
+        img.onerror = () => {
+          const fallback = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 260'><rect width='100%' height='100%' fill='#6c757d'/><text x='200' y='130' text-anchor='middle' fill='white' font-size='18'>Не загружено</text><text x='200' y='170' text-anchor='middle' fill='#f8f9fa' font-size='14'>${description}</text></svg>`)}`;
+          imgW = 400; imgH = 260;
+          [historicalImg.src, historicalImgBg.src, splitHistoricalImage.src] = [fallback, fallback, fallback];
+          requestAnimationFrame(() => { fitImage(); updateSplitImagePreview(); });
+        };
+        img.src = url;
+      }
+
+      function switchView() {
+        if (currentView === 'image') {
+          currentView = 'map';
+          mapView.classList.remove('view-hidden');
+          imageView.classList.add('view-hidden');
+          switchIcon.textContent = '🖼️';
+          map?.container.fitToViewport();
+        } else {
+          currentView = 'image';
+          mapView.classList.add('view-hidden');
+          imageView.classList.remove('view-hidden');
+          switchIcon.textContent = '🗺️';
+          requestAnimationFrame(fitImage);
+        }
+      }
+
+      function loadQuestion(savedYear = null) {
+        questionAnswered = false;
+        waitingNext = false;
+        clearMapGraphics();
+        selectedLat = selectedLng = null;
+
+        const q = currentQuestions[currentIndex];
+        roundBadge.textContent = `Раунд ${currentIndex + 1}/${currentQuestions.length}`;
+        totalScoreSpan.textContent = Math.floor(totalPoints);
+        yearSliderArea.style.display = '';
+        roundScoreCards.classList.add('hidden');
+        toggleViewDiv.classList.remove('hidden');
+        splitViewDiv.classList.add('hidden');
+
+        selectedYear = savedYear ?? Math.floor(Math.random() * (2024 - 1850 + 1)) + 1850;
+        yearSlider.value = selectedYear;
+        yearValueDisplay.textContent = selectedYear;
+
+        actionBtn.disabled = false;
+        actionBtn.textContent = '✅ ПРОВЕРИТЬ';
+        actionBtn.onclick = handleCheck;
+
+        setInfo('Определите место на карте и укажите наиболее вероятный год.', 2000);
+        loadImage(q.imageUrl, q.description);
+
+        map?.setCenter([55.7537, 37.6199], 6, { duration: 250 });
+        if (currentView === 'map') switchView();
+      }
+
+      function handleCheck() {
+        if (questionAnswered || waitingNext) return;
+        if (selectedLat == null || selectedLng == null) return setInfo('Сначала выберите точку на карте.', 2200);
+
+        const q = currentQuestions[currentIndex];
+        const res = calcPoints(selectedLat, selectedLng, selectedYear, q.correctLat, q.correctLng, q.correctYear);
+
+        totalPoints += res.total;
+        totalScoreSpan.textContent = Math.floor(totalPoints);
+
+        drawAnswerOnMainMap(q);
+        questionAnswered = true;
+        waitingNext = true;
+        saveGameState();
+
+        yearSliderArea.style.display = 'none';
+        toggleViewDiv.classList.add('hidden');
+        splitViewDiv.classList.remove('hidden');
+
+        distanceCard.textContent = `Разница в местоположении: ${res.distKm.toFixed(1)} км`;
+        resultDescription.textContent = q.description;
+        correctYearChip.textContent = q.correctYear;
+        yearDiffText.textContent = `Разница: ${res.yearDiff} лет`;
+        distancePoints.textContent = res.pointsDist;
+        yearPoints.textContent = res.pointsYear;
+        roundPoints.textContent = res.total;
+        roundScoreCards.classList.remove('hidden');
+
+        splitHistoricalImage.src = historicalImg.src;
+        updateSplitImagePreview();
+        initSplitMap().catch(console.error);
+
+        setInfo('Раунд завершён. Ознакомьтесь с результатом и перейдите к следующему вопросу.', 3200);
+
+        actionBtn.disabled = false;
+        actionBtn.textContent = '➡️ СЛЕДУЮЩИЙ ВОПРОС';
+        actionBtn.onclick = () => {
+          currentIndex += 1;
+          if (currentIndex < currentQuestions.length) {
+            loadQuestion();
+            saveGameState();
+          } else {
+            finishGame();
+          }
+        };
+      }
+
+      function finishGame() {
+        const maxPoints = currentQuestions.length * 1000;
+        const percent = (totalPoints / maxPoints) * 100;
+        const messages = percent >= 80
+          ? ['Вы продемонстрировали высокий уровень исторической и географической точности.']
+          : percent >= 50
+            ? ['Хороший результат. Рекомендуется повторить материал для повышения точности.']
+            : ['Рекомендуется повторная попытка для улучшения итогового результата.'];
+
+        byId('finalMessage').innerHTML = `Итоговый результат: ${Math.floor(totalPoints)} из ${maxPoints}<br>${messages[0]}`;
+        const finalButtons = byId('finalButtons');
+        finalButtons.innerHTML = '';
+
+        const againBtn = document.createElement('button');
+        againBtn.className = 'modal-btn';
+        againBtn.textContent = 'Новая игра';
+        againBtn.onclick = () => { byId('finalModal').classList.add('hidden'); startGame(false); };
+
+        const menuBtn = document.createElement('button');
+        menuBtn.className = 'modal-btn';
+        menuBtn.textContent = 'Главное меню';
+        menuBtn.onclick = () => {
+          byId('finalModal').classList.add('hidden');
+          byId('gameScreen').classList.add('hidden');
+          byId('menuScreen').classList.remove('hidden');
+          map?.destroy(); map = null;
+          splitMap?.destroy(); splitMap = null;
+        };
+
+        finalButtons.append(againBtn, menuBtn);
+        byId('finalModal').classList.remove('hidden');
+        clearGameState();
+      }
+
+      async function startGame(useSaved = false) {
+        byId('menuScreen').classList.add('hidden');
+        byId('gameScreen').classList.remove('hidden');
+
+        if (map) { map.destroy(); map = null; }
+        if (splitMap) { splitMap.destroy(); splitMap = null; }
+
+        await initMainMap();
+
+        if (useSaved) {
+          const saved = loadGameState();
+          if (saved?.currentQuestions?.length && saved.currentIndex < saved.currentQuestions.length) {
+            currentQuestions = saved.currentQuestions;
+            totalPoints = saved.totalPoints;
+            currentIndex = saved.currentIndex;
+            selectedYear = saved.selectedYear;
+            loadQuestion(saved.selectedYear);
+          } else {
+            currentQuestions = randomQuestions();
+            totalPoints = 0;
+            currentIndex = 0;
+            loadQuestion();
+            clearGameState();
+            saveGameState();
+          }
+        } else {
+          currentQuestions = randomQuestions();
+          totalPoints = 0;
+          currentIndex = 0;
+          loadQuestion();
+          clearGameState();
+          saveGameState();
+        }
+
+        mapView.classList.add('view-hidden');
+        imageView.classList.remove('view-hidden');
+        currentView = 'image';
+        switchIcon.textContent = '🗺️';
+      }
+
+      yearSlider.addEventListener('input', () => {
+        if (questionAnswered || waitingNext) {
+          yearSlider.value = selectedYear;
+          return;
+        }
+        selectedYear = Number(yearSlider.value);
+        yearValueDisplay.textContent = selectedYear;
+        saveGameState();
+      });
+
+      imageWrapper.addEventListener('pointerdown', (e) => {
+        if (currentView !== 'image' || (e.button !== undefined && e.button !== 0)) return;
+        imageWrapper.setPointerCapture?.(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (pointers.size === 1) {
+          gesture = { type: 'drag', id: e.pointerId, sx: e.clientX, sy: e.clientY, tx: translateX, ty: translateY };
+        } else if (pointers.size === 2) {
+          const [p1, p2] = [...pointers.values()];
+          gesture = { type: 'pinch', dist: Math.hypot(p1.x - p2.x, p1.y - p2.y), scale };
+        }
+      });
+      imageWrapper.addEventListener('pointermove', (e) => {
+        if (!pointers.has(e.pointerId) || currentView !== 'image') return;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (pointers.size === 1 && gesture?.type === 'drag' && gesture.id === e.pointerId) {
+          translateX = gesture.tx + (e.clientX - gesture.sx);
+          translateY = gesture.ty + (e.clientY - gesture.sy);
+          applyBounds();
+          return;
+        }
+
+        if (pointers.size === 2 && gesture?.type === 'pinch') {
+          const [p1, p2] = [...pointers.values()];
+          const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+          const rect = imageWrapper.getBoundingClientRect();
+          const mx = (p1.x + p2.x) / 2 - rect.left;
+          const my = (p1.y + p2.y) / 2 - rect.top;
+          setScale(gesture.scale * (dist / gesture.dist), mx, my);
+        }
+      });
+      const endPointer = (e) => {
+        pointers.delete(e.pointerId);
+        if (pointers.size === 0) gesture = null;
+      };
+      imageWrapper.addEventListener('pointerup', endPointer);
+      imageWrapper.addEventListener('pointercancel', endPointer);
+      imageWrapper.addEventListener('pointerleave', endPointer);
+      imageWrapper.addEventListener('wheel', (e) => {
+        if (currentView !== 'image') return;
+        e.preventDefault();
+        const rect = imageWrapper.getBoundingClientRect();
+        setScale(scale * (e.deltaY > 0 ? 0.92 : 1.08), e.clientX - rect.left, e.clientY - rect.top);
+      }, { passive: false });
+      imageWrapper.addEventListener('dblclick', fitImage);
+
+      byId('zoomIn').addEventListener('click', () => setScale(scale * 1.18));
+      byId('zoomOut').addEventListener('click', () => setScale(scale * 0.82));
+
+      let switchDrag = null;
+      function clampSwitchPosition(x, y) {
+        const parent = switchViewBtn.parentElement.getBoundingClientRect();
+        const rect = switchViewBtn.getBoundingClientRect();
+        return {
+          x: clamp(x, 6, parent.width - rect.width - 6),
+          y: clamp(y, 6, parent.height - rect.height - 6)
+        };
+      }
+      switchViewBtn.addEventListener('pointerdown', (e) => {
+        const rect = switchViewBtn.getBoundingClientRect();
+        const parent = switchViewBtn.parentElement.getBoundingClientRect();
+        switchDrag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, left: rect.left - parent.left, top: rect.top - parent.top, moved: false };
+        switchViewBtn.setPointerCapture?.(e.pointerId);
+      });
+      switchViewBtn.addEventListener('pointermove', (e) => {
+        if (!switchDrag || switchDrag.id !== e.pointerId) return;
+        const dx = e.clientX - switchDrag.sx;
+        const dy = e.clientY - switchDrag.sy;
+        switchDrag.moved = true;
+        const pos = clampSwitchPosition(switchDrag.left + dx, switchDrag.top + dy);
+        switchViewBtn.style.left = `${pos.x}px`;
+        switchViewBtn.style.top = `${pos.y}px`;
+        switchViewBtn.style.right = 'auto';
+        switchViewBtn.style.bottom = 'auto';
+        switchViewBtn.classList.add('dragging');
+      });
+      switchViewBtn.addEventListener('pointerup', (e) => {
+        if (!switchDrag || switchDrag.id !== e.pointerId) return;
+        const moved = switchDrag.moved;
+        switchDrag = null;
+        switchViewBtn.classList.remove('dragging');
+        if (!moved) switchView();
+      });
+
+      byId('singlePlayerBtn').addEventListener('click', () => {
+        const hasSave = !!loadGameState();
+        byId('modalQuestion').textContent = hasSave
+          ? 'Хотите начать новую игру или продолжить сохранённую?'
+          : 'Сохранённая игра не найдена. Начать новую?';
+
+        const modalButtons = byId('modalButtons');
+        modalButtons.innerHTML = '';
+
+        const newBtn = document.createElement('button');
+        newBtn.className = 'modal-btn';
+        newBtn.textContent = hasSave ? 'Новая игра' : 'Начать игру';
+        newBtn.onclick = () => { byId('gameModeModal').classList.add('hidden'); startGame(false); };
+        modalButtons.appendChild(newBtn);
+
+        if (hasSave) {
+          const contBtn = document.createElement('button');
+          contBtn.className = 'modal-btn';
+          contBtn.textContent = 'Продолжить';
+          contBtn.onclick = () => { byId('gameModeModal').classList.add('hidden'); startGame(true); };
+          modalButtons.appendChild(contBtn);
+        }
+
+        byId('gameModeModal').classList.remove('hidden');
+      });
+
+      byId('multiPlayerBtn').addEventListener('click', () => alert('Многопользовательский режим находится в разработке.'));
+      byId('closeGameModeModal').addEventListener('click', () => byId('gameModeModal').classList.add('hidden'));
+      byId('helpBtn').addEventListener('click', () => byId('rulesModal').classList.remove('hidden'));
+      byId('closeRulesModal').addEventListener('click', () => byId('rulesModal').classList.add('hidden'));
+      byId('closeRulesBtn').addEventListener('click', () => byId('rulesModal').classList.add('hidden'));
+      byId('closeFinalModal').addEventListener('click', () => byId('finalModal').classList.add('hidden'));
+
+      byId('backToMenuBtn').addEventListener('click', () => {
+        byId('gameScreen').classList.add('hidden');
+        byId('menuScreen').classList.remove('hidden');
+        byId('gameModeModal').classList.add('hidden');
+        byId('finalModal').classList.add('hidden');
+        map?.destroy(); map = null;
+        splitMap?.destroy(); splitMap = null;
+      });
+
+      window.addEventListener('resize', () => {
+        requestAnimationFrame(() => {
+          if (!byId('gameScreen').classList.contains('hidden')) {
+            if (currentView === 'image' && !questionAnswered) fitImage();
+            map?.container.fitToViewport();
+            splitMap?.container.fitToViewport();
+            updateSplitImagePreview();
+          }
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
