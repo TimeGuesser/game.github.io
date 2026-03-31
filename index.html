@@ -120,6 +120,7 @@
       width: 64px; height: 64px; border-radius: 14px; border: 1px solid #1e3a8a;
       background: rgba(0,0,0,.62); color: #fff; font-size: 30px; display: grid; place-items: center;
       cursor: grab; transition: transform .08s; touch-action: none; will-change: left, top;
+      cursor: grab; transition: transform .08s; touch-action: none;
     }
     .switch-btn:active { transform: scale(.96); }
     .switch-btn.dragging { transition: none; cursor: grabbing; }
@@ -803,6 +804,18 @@
         const dx = clientX - switchDrag.sx;
         const dy = clientY - switchDrag.sy;
         if (Math.abs(dx) > 1 || Math.abs(dy) > 1) switchDrag.moved = true;
+      switchViewBtn.addEventListener('pointerdown', (e) => {
+        const rect = switchViewBtn.getBoundingClientRect();
+        const parent = switchViewBtn.parentElement.getBoundingClientRect();
+        switchDrag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, left: rect.left - parent.left, top: rect.top - parent.top, moved: false };
+        switchViewBtn.setPointerCapture?.(e.pointerId);
+      });
+      switchViewBtn.addEventListener('pointermove', (e) => {
+        if (!switchDrag || switchDrag.id !== e.pointerId) return;
+        e.preventDefault();
+        const dx = e.clientX - switchDrag.sx;
+        const dy = e.clientY - switchDrag.sy;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) switchDrag.moved = true;
         const pos = clampSwitchPosition(switchDrag.left + dx, switchDrag.top + dy);
         switchViewBtn.style.left = `${pos.x}px`;
         switchViewBtn.style.top = `${pos.y}px`;
@@ -826,6 +839,36 @@
         const parent = switchViewBtn.parentElement.getBoundingClientRect();
         switchDrag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, left: rect.left - parent.left, top: rect.top - parent.top, moved: false };
         switchViewBtn.setPointerCapture?.(e.pointerId);
+        const moved = switchDrag.moved;
+        switchViewBtn.releasePointerCapture?.(pointerId);
+        switchDrag = null;
+        switchViewBtn.classList.remove('dragging');
+        if (!canceled && !moved) switchView();
+      };
+
+      switchViewBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        const rect = switchViewBtn.getBoundingClientRect();
+        const parent = switchViewBtn.parentElement.getBoundingClientRect();
+        switchDrag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, left: rect.left - parent.left, top: rect.top - parent.top, moved: false };
+        switchViewBtn.setPointerCapture?.(e.pointerId);
+      });
+
+      const finishSwitchDrag = (e) => {
+        if (!switchDrag || switchDrag.id !== e.pointerId) return;
+        const moved = switchDrag.moved;
+        switchViewBtn.releasePointerCapture?.(e.pointerId);
+        switchDrag = null;
+        switchViewBtn.classList.remove('dragging');
+        if (!moved) switchView();
+      };
+
+      switchViewBtn.addEventListener('pointerup', finishSwitchDrag);
+      switchViewBtn.addEventListener('pointercancel', (e) => {
+        if (!switchDrag || switchDrag.id !== e.pointerId) return;
+        switchViewBtn.releasePointerCapture?.(e.pointerId);
+        switchDrag = null;
+        switchViewBtn.classList.remove('dragging');
       });
 
       window.addEventListener('pointermove', (e) => {
