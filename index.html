@@ -63,6 +63,7 @@
 
     .game-layout {
       flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr;
+      grid-template-rows: minmax(0, 1fr) auto;
     }
     .main-area {
       position: relative; min-height: 0; border-top: 1px solid #dbe3ef; border-bottom: 1px solid #dbe3ef;
@@ -71,10 +72,11 @@
     .control-bar { padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 10px; }
 
     @media (min-width: 980px) {
-      .game-layout { grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; padding-right: 12px; }
-      .main-area { margin-top: 8px; }
+      .game-layout { padding: 0 12px 10px; }
+      .main-area { margin-top: 8px; border: 1px solid #dbe3ef; border-radius: 14px; }
       .control-bar {
-        margin-top: 8px; border: 1px solid #dbe3ef; border-radius: 14px; align-self: stretch; justify-content: flex-end;
+        margin-top: 10px; border: 1px solid #dbe3ef; border-radius: 14px; background: #fff;
+        max-width: 880px; width: 100%; justify-self: center;
       }
     }
 
@@ -95,8 +97,12 @@
     .overlay-top {
       position: absolute; top: 12px; left: 12px; right: 12px;
       display: flex; justify-content: space-between; align-items: center; gap: 10px;
-      color: #fff; background: rgba(0,0,0,.68); border-radius: 999px; padding: 6px 12px;
-      backdrop-filter: blur(8px); font-weight: 700; z-index: 20;
+      color: #fff; font-weight: 700; z-index: 20;
+      pointer-events: none;
+    }
+    .overlay-pill {
+      background: rgba(0,0,0,.68); border-radius: 12px; padding: 6px 12px;
+      backdrop-filter: blur(8px); min-width: 108px; text-align: center;
     }
 
     .zoom-buttons {
@@ -232,8 +238,8 @@
           <div id="switchViewBtn" class="switch-btn"><span id="switchIcon">🗺️</span></div>
 
           <div class="overlay-top">
-            <span id="roundBadge">Раунд 1/5</span>
-            <span id="totalScore">0</span>
+            <span id="roundBadge" class="overlay-pill">Раунд 1/5</span>
+            <span id="totalScore" class="overlay-pill">0</span>
           </div>
         </div>
 
@@ -282,7 +288,6 @@
       const QUESTIONS_PER_GAME = 5;
       const SAVE_KEY = 'historyguesser_save';
       const MAX_SCALE = 6;
-      const OVERDRAW_PX = 25;
 
       const byId = (id) => document.getElementById(id);
       const yearSlider = byId('yearSlider');
@@ -469,14 +474,12 @@
         const rect = stageRect();
         const scaledW = imgW * nextScale;
         const scaledH = imgH * nextScale;
-        const centerX = (rect.width - scaledW) / 2;
-        const centerY = (rect.height - scaledH) / 2;
-
-        const minX = scaledW <= rect.width ? centerX - OVERDRAW_PX : rect.width - scaledW - OVERDRAW_PX;
-        const maxX = scaledW <= rect.width ? centerX + OVERDRAW_PX : OVERDRAW_PX;
-        const minY = scaledH <= rect.height ? centerY - OVERDRAW_PX : rect.height - scaledH - OVERDRAW_PX;
-        const maxY = scaledH <= rect.height ? centerY + OVERDRAW_PX : OVERDRAW_PX;
-        return { minX, maxX, minY, maxY };
+        return {
+          minX: rect.width - scaledW - rect.width,
+          maxX: rect.width,
+          minY: rect.height - scaledH - rect.height,
+          maxY: rect.height
+        };
       }
 
       function applyTransforms() {
@@ -799,7 +802,7 @@
         if (!switchDrag || switchDrag.id !== e.pointerId) return;
         const dx = e.clientX - switchDrag.sx;
         const dy = e.clientY - switchDrag.sy;
-        switchDrag.moved = true;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) switchDrag.moved = true;
         const pos = clampSwitchPosition(switchDrag.left + dx, switchDrag.top + dy);
         switchViewBtn.style.left = `${pos.x}px`;
         switchViewBtn.style.top = `${pos.y}px`;
@@ -813,6 +816,10 @@
         switchDrag = null;
         switchViewBtn.classList.remove('dragging');
         if (!moved) switchView();
+      });
+      switchViewBtn.addEventListener('pointercancel', () => {
+        switchDrag = null;
+        switchViewBtn.classList.remove('dragging');
       });
 
       byId('singlePlayerBtn').addEventListener('click', () => {
