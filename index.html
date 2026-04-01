@@ -32,7 +32,7 @@
       -webkit-background-clip: text; background-clip: text; color: transparent;
       margin-bottom: 2rem;
     }
-    .menu-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+    .menu-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; padding: 0 16px; }
     .menu-btn {
       border: none; background: #1e3a8a; color: #fff; border-radius: 999px; padding: 13px 28px;
       font-size: 1rem; font-weight: 700; cursor: pointer;
@@ -41,6 +41,11 @@
       position: absolute; top: 16px; right: 16px; width: 42px; height: 42px;
       border-radius: 50%; background: #1e3a8a; color: #fff; display: grid; place-items: center;
       font-size: 1.35rem; font-weight: 800; cursor: pointer;
+    }
+    .leaderboard-btn {
+      position: absolute; top: 16px; left: 16px; width: 42px; height: 42px;
+      border-radius: 50%; background: #1e3a8a; color: #fff; display: grid; place-items: center;
+      font-size: 1.1rem; font-weight: 800; cursor: pointer;
     }
 
     .game-header {
@@ -63,18 +68,21 @@
 
     .game-layout {
       flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr;
+      padding: 0 0 max(10px, env(safe-area-inset-bottom));
     }
     .main-area {
       position: relative; min-height: 0; border-top: 1px solid #dbe3ef; border-bottom: 1px solid #dbe3ef;
-      margin-top: 8px; overflow: hidden;
+      margin-top: 8px; overflow: hidden; border-radius: 0;
     }
-    .control-bar { padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+    .control-bar { padding: 10px 8px 14px; display: flex; flex-direction: column; gap: 10px; }
 
     @media (min-width: 980px) {
-      .game-layout { grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; padding-right: 12px; }
-      .main-area { margin-top: 8px; }
+      .game-layout { grid-template-columns: minmax(0, 1fr) 390px; gap: 14px; padding: 8px 14px 14px; }
+      .main-area { margin-top: 0; border: 1px solid #dbe3ef; border-radius: 18px; }
       .control-bar {
-        margin-top: 8px; border: 1px solid #dbe3ef; border-radius: 14px; align-self: stretch; justify-content: flex-end;
+        margin-top: 0; border: 1px solid #dbe3ef; border-radius: 18px; align-self: stretch; justify-content: flex-end;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        padding: 14px;
       }
     }
 
@@ -92,12 +100,12 @@
     .historical-bg { opacity: .35; filter: brightness(.7) saturate(.9) blur(.7px); }
     .image-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.12); pointer-events: none; }
 
-    .overlay-top {
-      position: absolute; top: 12px; left: 12px; right: 12px;
-      display: flex; justify-content: space-between; align-items: center; gap: 10px;
-      color: #fff; background: rgba(0,0,0,.68); border-radius: 999px; padding: 6px 12px;
-      backdrop-filter: blur(8px); font-weight: 700; z-index: 20;
+    .hud-badge {
+      position: absolute; top: 12px; color: #fff; background: rgba(0,0,0,.68); border-radius: 999px; padding: 7px 12px;
+      backdrop-filter: blur(8px); font-weight: 700; z-index: 20; font-size: .95rem;
     }
+    .round-badge { left: 12px; }
+    .score-badge { right: 12px; }
 
     .zoom-buttons {
       position: absolute; left: 16px; bottom: 16px; z-index: 30;
@@ -112,7 +120,7 @@
       position: absolute; right: 16px; bottom: 16px; z-index: 40;
       width: 64px; height: 64px; border-radius: 14px; border: 1px solid #1e3a8a;
       background: rgba(0,0,0,.62); color: #fff; font-size: 30px; display: grid; place-items: center;
-      cursor: grab; transition: transform .08s;
+      cursor: grab; transition: transform .08s; touch-action: none;
     }
     .switch-btn:active { transform: scale(.96); }
     .switch-btn.dragging { transition: none; cursor: grabbing; }
@@ -154,6 +162,33 @@
     .rule-bullet { width: 10px; height: 10px; background: #1e3a8a; transform: rotate(45deg); margin-top: 6px; flex: 0 0 auto; }
     .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
     .modal-btn { border: none; border-radius: 999px; padding: 10px 18px; background: #1e3a8a; color: #fff; font-weight: 700; cursor: pointer; }
+    .player-form { display: grid; gap: 10px; margin-top: 10px; }
+    .player-form input, .player-form select {
+      width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; font: inherit;
+    }
+    .leaderboard-screen {
+      padding: 12px; gap: 10px; background: #f8fafc;
+    }
+    .leaderboard-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .leaderboard-toolbar select, .leaderboard-toolbar input {
+      border: 1px solid #cbd5e1; border-radius: 10px; padding: 8px 10px; font: inherit;
+    }
+    .leaderboard-table-wrap {
+      flex: 1; overflow: auto; border: 1px solid #dbe3ef; border-radius: 12px; background: #fff;
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; font-size: .92rem; }
+    th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; }
+
+    @media (max-width: 979px) {
+      .game-header { padding: 8px 10px; }
+      .game-title { font-size: 1rem; }
+      .info-block { padding: 8px 10px 0; font-size: .9rem; min-height: 74px; }
+      .game-layout { padding-bottom: env(safe-area-inset-bottom); }
+      .main-area { margin-top: 4px; min-height: 52vh; }
+      .control-bar { padding: 8px 8px 10px; }
+      .year-slider-area { padding: 8px 10px; }
+    }
 
     .ymaps-copyrights-pane, .ymaps-logo, .ymaps-copyright,
     [class*="ymaps-copyright"], [class*="ymaps-logo"],
@@ -169,6 +204,22 @@
       <div class="modal-close" id="closeGameModeModal">✕</div>
       <p id="modalQuestion">Выберите действие</p>
       <div id="modalButtons" class="modal-buttons"></div>
+    </div>
+  </div>
+
+  <div id="playerDataModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-close" id="closePlayerDataModal">✕</div>
+      <p style="font-size:1.25rem;font-weight:800;text-align:center;">Данные игрока</p>
+      <div class="player-form">
+        <input id="playerNameInput" placeholder="ФИО или никнейм">
+        <select id="playerOrgSelect"></select>
+        <input id="playerCourseInput" placeholder="Курс (например, 2)">
+        <input id="playerGroupInput" placeholder="Взвод / группа">
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-btn" id="startMultiBtn">Начать мультиплеер</button>
+      </div>
     </div>
   </div>
 
@@ -201,7 +252,38 @@
       <button id="singlePlayerBtn" class="menu-btn">Одиночная игра</button>
       <button id="multiPlayerBtn" class="menu-btn">Многопользовательская</button>
     </div>
+    <div class="leaderboard-btn" id="menuLeaderboardBtn">🏆</div>
     <div class="help-btn" id="helpBtn">?</div>
+  </div>
+
+  <div id="leaderboardScreen" class="screen leaderboard-screen hidden">
+    <div class="game-header">
+      <button id="backFromLeaderboardBtn" class="back-btn">← Назад</button>
+      <div class="game-title">Таблица лидеров</div>
+      <div style="width:54px"></div>
+    </div>
+    <div class="leaderboard-toolbar">
+      <select id="lbTypeSelect">
+        <option value="overall">Общая таблица</option>
+        <option value="all_orgs">По всем учреждениям</option>
+        <option value="org">По учреждению</option>
+        <option value="course">По курсу</option>
+        <option value="group">По взводу/группе</option>
+      </select>
+      <select id="lbOrgFilter"></select>
+      <input id="lbCourseFilter" placeholder="Курс">
+      <input id="lbGroupFilter" placeholder="Взвод/группа">
+    </div>
+    <div class="leaderboard-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Игрок</th><th>Учреждение</th><th>Курс</th><th>Взвод/группа</th><th>Очки</th><th>Режим</th><th>Дата</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+    </div>
   </div>
 
   <div id="gameScreen" class="screen hidden">
@@ -231,10 +313,8 @@
 
           <div id="switchViewBtn" class="switch-btn"><span id="switchIcon">🗺️</span></div>
 
-          <div class="overlay-top">
-            <span id="roundBadge">Раунд 1/5</span>
-            <span id="totalScore">0</span>
-          </div>
+          <span id="roundBadge" class="hud-badge round-badge">Раунд 1/5</span>
+          <span id="totalScore" class="hud-badge score-badge">0</span>
         </div>
 
         <div id="splitView" class="split-container hidden">
@@ -281,8 +361,12 @@
       ];
       const QUESTIONS_PER_GAME = 5;
       const SAVE_KEY = 'historyguesser_save';
+      const LEADERBOARD_KEY = 'historyguesser_leaderboard_v1';
+      const PLAYER_KEY = 'historyguesser_player_profile_v1';
       const MAX_SCALE = 6;
       const OVERDRAW_PX = 25;
+      const DRAG_THRESHOLD = 6;
+      const EDUCATION_ORGS = ['Не указано', 'Военная академия связи', 'Михайловская военная артиллерийская академия', 'Военно-космическая академия им. А.Ф. Можайского', 'Военно-медицинская академия', 'Другое'];
 
       const byId = (id) => document.getElementById(id);
       const yearSlider = byId('yearSlider');
@@ -307,6 +391,12 @@
       const roundPoints = byId('roundPoints');
       const switchViewBtn = byId('switchViewBtn');
       const switchIcon = byId('switchIcon');
+      const playerOrgSelect = byId('playerOrgSelect');
+      const lbOrgFilter = byId('lbOrgFilter');
+      const lbTypeSelect = byId('lbTypeSelect');
+      const lbCourseFilter = byId('lbCourseFilter');
+      const lbGroupFilter = byId('lbGroupFilter');
+      const leaderboardBody = byId('leaderboardBody');
 
       const imageWrapper = byId('imageWrapper');
       const splitImageWrapper = byId('splitImageWrapper');
@@ -323,6 +413,8 @@
       let questionAnswered = false;
       let waitingNext = false;
       let currentView = 'image';
+      let gameMode = 'single';
+      let currentPlayer = null;
 
       let imgW = 0, imgH = 0, scale = 1, translateX = 0, translateY = 0, minScale = 0.15;
       let pointers = new Map();
@@ -346,6 +438,67 @@
             infoBlock.innerHTML = 'Определите место на карте и укажите наиболее вероятный год.';
           }
         }, timeout);
+      }
+      function renderAnswerSummary(q, res) {
+        infoBlock.innerHTML = `
+          <div style="font-weight:800;color:#0f172a;">${q.description}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+            <span class="year-chip">Правильный год: ${q.correctYear}</span>
+            <span class="year-chip">Разница: ${res.yearDiff} лет</span>
+            <span class="year-chip">Дистанция: ${res.distKm.toFixed(1)} км</span>
+          </div>`;
+      }
+
+      function populateOrgSelects() {
+        const optionsHtml = EDUCATION_ORGS.map((org) => `<option value="${org}">${org}</option>`).join('');
+        playerOrgSelect.innerHTML = optionsHtml;
+        lbOrgFilter.innerHTML = `<option value="">Все учреждения</option>${optionsHtml}`;
+      }
+      function loadPlayerProfile() {
+        try { return JSON.parse(localStorage.getItem(PLAYER_KEY) || 'null'); } catch { return null; }
+      }
+      function savePlayerProfile(profile) { localStorage.setItem(PLAYER_KEY, JSON.stringify(profile)); }
+      function loadLeaderboard() {
+        try { return JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]'); } catch { return []; }
+      }
+      function saveLeaderboard(entries) { localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries)); }
+      function addLeaderboardEntry(points) {
+        if (!currentPlayer) return;
+        const list = loadLeaderboard();
+        list.push({
+          name: currentPlayer.name,
+          org: currentPlayer.org,
+          course: currentPlayer.course || '—',
+          group: currentPlayer.group || '—',
+          points: Math.floor(points),
+          mode: gameMode,
+          date: new Date().toISOString()
+        });
+        saveLeaderboard(list);
+      }
+      function renderLeaderboard() {
+        const type = lbTypeSelect.value;
+        const org = lbOrgFilter.value.trim();
+        const course = lbCourseFilter.value.trim();
+        const group = lbGroupFilter.value.trim().toLowerCase();
+        let rows = loadLeaderboard();
+        if (type === 'org' && org) rows = rows.filter((r) => r.org === org);
+        if (type === 'course' && course) rows = rows.filter((r) => String(r.course) === course);
+        if (type === 'group' && group) rows = rows.filter((r) => String(r.group).toLowerCase() === group);
+        if (type === 'all_orgs') rows = rows.filter((r) => r.org && r.org !== 'Не указано');
+
+        rows.sort((a, b) => b.points - a.points);
+        leaderboardBody.innerHTML = rows.map((r, idx) => `
+          <tr>
+            <td>${idx + 1}</td><td>${r.name}</td><td>${r.org}</td><td>${r.course}</td><td>${r.group}</td><td>${r.points}</td><td>${r.mode}</td><td>${new Date(r.date).toLocaleDateString('ru-RU')}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="8">Пока нет результатов.</td></tr>';
+      }
+      function resetSwitchButtonPosition() {
+        switchViewBtn.style.right = '16px';
+        switchViewBtn.style.bottom = '16px';
+        switchViewBtn.style.left = 'auto';
+        switchViewBtn.style.top = 'auto';
       }
 
       function saveGameState() {
@@ -594,6 +747,7 @@
 
         setInfo('Определите место на карте и укажите наиболее вероятный год.', 2000);
         loadImage(q.imageUrl, q.description);
+        resetSwitchButtonPosition();
 
         map?.setCenter([55.7537, 37.6199], 6, { duration: 250 });
         if (currentView === 'map') switchView();
@@ -632,6 +786,7 @@
         initSplitMap().catch(console.error);
 
         setInfo('Раунд завершён. Ознакомьтесь с результатом и перейдите к следующему вопросу.', 3200);
+        renderAnswerSummary(q, res);
 
         actionBtn.disabled = false;
         actionBtn.textContent = '➡️ СЛЕДУЮЩИЙ ВОПРОС';
@@ -655,6 +810,7 @@
             ? ['Хороший результат. Рекомендуется повторить материал для повышения точности.']
             : ['Рекомендуется повторная попытка для улучшения итогового результата.'];
 
+        if (gameMode === 'multi') addLeaderboardEntry(totalPoints);
         byId('finalMessage').innerHTML = `Итоговый результат: ${Math.floor(totalPoints)} из ${maxPoints}<br>${messages[0]}`;
         const finalButtons = byId('finalButtons');
         finalButtons.innerHTML = '';
@@ -662,7 +818,7 @@
         const againBtn = document.createElement('button');
         againBtn.className = 'modal-btn';
         againBtn.textContent = 'Новая игра';
-        againBtn.onclick = () => { byId('finalModal').classList.add('hidden'); startGame(false); };
+        againBtn.onclick = () => { byId('finalModal').classList.add('hidden'); startGame(false, gameMode); };
 
         const menuBtn = document.createElement('button');
         menuBtn.className = 'modal-btn';
@@ -680,8 +836,10 @@
         clearGameState();
       }
 
-      async function startGame(useSaved = false) {
+      async function startGame(useSaved = false, mode = 'single') {
+        gameMode = mode;
         byId('menuScreen').classList.add('hidden');
+        byId('leaderboardScreen').classList.add('hidden');
         byId('gameScreen').classList.remove('hidden');
 
         if (map) { map.destroy(); map = null; }
@@ -689,7 +847,7 @@
 
         await initMainMap();
 
-        if (useSaved) {
+        if (useSaved && mode === 'single') {
           const saved = loadGameState();
           if (saved?.currentQuestions?.length && saved.currentIndex < saved.currentQuestions.length) {
             currentQuestions = saved.currentQuestions;
@@ -718,6 +876,7 @@
         imageView.classList.remove('view-hidden');
         currentView = 'image';
         switchIcon.textContent = '🗺️';
+        resetSwitchButtonPosition();
       }
 
       yearSlider.addEventListener('input', () => {
@@ -790,6 +949,7 @@
         };
       }
       switchViewBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         const rect = switchViewBtn.getBoundingClientRect();
         const parent = switchViewBtn.parentElement.getBoundingClientRect();
         switchDrag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, left: rect.left - parent.left, top: rect.top - parent.top, moved: false };
@@ -799,6 +959,7 @@
         if (!switchDrag || switchDrag.id !== e.pointerId) return;
         const dx = e.clientX - switchDrag.sx;
         const dy = e.clientY - switchDrag.sy;
+        if (!switchDrag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
         switchDrag.moved = true;
         const pos = clampSwitchPosition(switchDrag.left + dx, switchDrag.top + dy);
         switchViewBtn.style.left = `${pos.x}px`;
@@ -814,6 +975,10 @@
         switchViewBtn.classList.remove('dragging');
         if (!moved) switchView();
       });
+      switchViewBtn.addEventListener('pointercancel', () => {
+        switchDrag = null;
+        switchViewBtn.classList.remove('dragging');
+      });
 
       byId('singlePlayerBtn').addEventListener('click', () => {
         const hasSave = !!loadGameState();
@@ -827,22 +992,57 @@
         const newBtn = document.createElement('button');
         newBtn.className = 'modal-btn';
         newBtn.textContent = hasSave ? 'Новая игра' : 'Начать игру';
-        newBtn.onclick = () => { byId('gameModeModal').classList.add('hidden'); startGame(false); };
+        newBtn.onclick = () => { byId('gameModeModal').classList.add('hidden'); startGame(false, 'single'); };
         modalButtons.appendChild(newBtn);
 
         if (hasSave) {
           const contBtn = document.createElement('button');
           contBtn.className = 'modal-btn';
           contBtn.textContent = 'Продолжить';
-          contBtn.onclick = () => { byId('gameModeModal').classList.add('hidden'); startGame(true); };
+          contBtn.onclick = () => { byId('gameModeModal').classList.add('hidden'); startGame(true, 'single'); };
           modalButtons.appendChild(contBtn);
         }
 
         byId('gameModeModal').classList.remove('hidden');
       });
 
-      byId('multiPlayerBtn').addEventListener('click', () => alert('Многопользовательский режим находится в разработке.'));
+      byId('multiPlayerBtn').addEventListener('click', () => {
+        const profile = loadPlayerProfile();
+        byId('playerNameInput').value = profile?.name || '';
+        byId('playerOrgSelect').value = profile?.org || 'Не указано';
+        byId('playerCourseInput').value = profile?.course || '';
+        byId('playerGroupInput').value = profile?.group || '';
+        byId('playerDataModal').classList.remove('hidden');
+      });
+      byId('startMultiBtn').addEventListener('click', () => {
+        const name = byId('playerNameInput').value.trim();
+        if (!name) return alert('Введите ФИО или никнейм.');
+        currentPlayer = {
+          name,
+          org: byId('playerOrgSelect').value || 'Не указано',
+          course: byId('playerCourseInput').value.trim(),
+          group: byId('playerGroupInput').value.trim()
+        };
+        savePlayerProfile(currentPlayer);
+        byId('playerDataModal').classList.add('hidden');
+        clearGameState();
+        startGame(false, 'multi');
+      });
+
+      byId('menuLeaderboardBtn').addEventListener('click', () => {
+        byId('menuScreen').classList.add('hidden');
+        byId('leaderboardScreen').classList.remove('hidden');
+        renderLeaderboard();
+      });
+      byId('backFromLeaderboardBtn').addEventListener('click', () => {
+        byId('leaderboardScreen').classList.add('hidden');
+        byId('menuScreen').classList.remove('hidden');
+      });
+      [lbTypeSelect, lbOrgFilter].forEach((el) => el.addEventListener('change', renderLeaderboard));
+      [lbCourseFilter, lbGroupFilter].forEach((el) => el.addEventListener('input', renderLeaderboard));
+
       byId('closeGameModeModal').addEventListener('click', () => byId('gameModeModal').classList.add('hidden'));
+      byId('closePlayerDataModal').addEventListener('click', () => byId('playerDataModal').classList.add('hidden'));
       byId('helpBtn').addEventListener('click', () => byId('rulesModal').classList.remove('hidden'));
       byId('closeRulesModal').addEventListener('click', () => byId('rulesModal').classList.add('hidden'));
       byId('closeRulesBtn').addEventListener('click', () => byId('rulesModal').classList.add('hidden'));
@@ -851,7 +1051,9 @@
       byId('backToMenuBtn').addEventListener('click', () => {
         byId('gameScreen').classList.add('hidden');
         byId('menuScreen').classList.remove('hidden');
+        byId('leaderboardScreen').classList.add('hidden');
         byId('gameModeModal').classList.add('hidden');
+        byId('playerDataModal').classList.add('hidden');
         byId('finalModal').classList.add('hidden');
         map?.destroy(); map = null;
         splitMap?.destroy(); splitMap = null;
@@ -867,6 +1069,8 @@
           }
         });
       });
+      populateOrgSelects();
+      currentPlayer = loadPlayerProfile();
     })();
   </script>
 </body>
