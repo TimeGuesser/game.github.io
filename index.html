@@ -68,6 +68,7 @@
 
     .game-layout {
       flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr;
+      padding: 0 0 max(10px, env(safe-area-inset-bottom));
     }
     .main-area {
       position: relative; min-height: 0; border-top: 1px solid #dbe3ef; border-bottom: 1px solid #dbe3ef;
@@ -75,7 +76,7 @@
     }
     .control-bar { padding: 10px 8px 14px; display: flex; flex-direction: column; gap: 10px; }
 
-    @media (min-width: 768px) {
+    @media (min-width: 980px) {
       .game-layout { grid-template-columns: minmax(0, 1fr) 390px; gap: 14px; padding: 8px 14px 14px; }
       .main-area { margin-top: 0; border: 1px solid #dbe3ef; border-radius: 18px; }
       .control-bar {
@@ -170,45 +171,25 @@
     .leaderboard-screen {
       padding: 12px; gap: 10px; background: #f8fafc;
     }
-    .leaderboard-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
-    .lb-tab {
-      border: 1px solid #cbd5e1; background: #fff; border-radius: 999px; padding: 8px 12px; cursor: pointer; font-weight: 700;
-    }
-    .lb-tab.active { background: #1e3a8a; color: #fff; border-color: #1e3a8a; }
     .leaderboard-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
     .leaderboard-toolbar select, .leaderboard-toolbar input {
       border: 1px solid #cbd5e1; border-radius: 10px; padding: 8px 10px; font: inherit;
     }
     .leaderboard-table-wrap {
-      flex: 1; overflow: auto; border: 1px solid #cfd8e6; border-radius: 14px; background: #fff;
-      box-shadow: 0 8px 24px rgba(15, 31, 74, .08);
+      flex: 1; overflow: auto; border: 1px solid #dbe3ef; border-radius: 12px; background: #fff;
     }
-    .selector-map-wrap {
-      display: none;
-      border: 1px solid #dbe3ef;
-      border-radius: 12px;
-      overflow: hidden;
-      height: 180px;
-      transition: height .2s ease;
-      background: #eef2f6;
-    }
-    .selector-map-wrap:hover { height: 300px; }
-    #selectorMap { width: 100%; height: 100%; }
-    .split-right-controls { display: none; gap: 10px; align-items: center; }
-    .split-score-grid { display: grid; grid-template-columns: repeat(3, minmax(78px, 1fr)); gap: 8px; flex: 1; }
-    .split-next-btn { white-space: nowrap; }
     table { width: 100%; border-collapse: collapse; min-width: 760px; }
-    th, td { padding: 11px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; font-size: .92rem; }
-    th { position: sticky; top: 0; background: linear-gradient(180deg,#f8fafc,#eef2f7); z-index: 1; font-weight: 800; color: #0f1f4a; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; font-size: .92rem; }
+    th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; }
 
-    
-    @media (min-width: 768px) {
-      .selector-map-wrap { display: block; }
-      .switch-btn { display: none; }
-      .split-columns { display: grid; grid-template-columns: 1.15fr 1fr; gap: 12px; min-height: 100%; }
-      .split-right-controls { display: flex; }
-      .split-left .distance-card { order: 3; }
-      .round-score-cards { display: none !important; }
+    @media (max-width: 979px) {
+      .game-header { padding: 8px 10px; }
+      .game-title { font-size: 1rem; }
+      .info-block { padding: 8px 10px 0; font-size: .9rem; min-height: 74px; }
+      .game-layout { padding-bottom: env(safe-area-inset-bottom); }
+      .main-area { margin-top: 4px; min-height: 52vh; }
+      .control-bar { padding: 8px 8px 10px; }
+      .year-slider-area { padding: 8px 10px; }
     }
 
     .ymaps-copyrights-pane, .ymaps-logo, .ymaps-copyright,
@@ -273,7 +254,7 @@
     <div class="menu-title">HistoryGuesser</div>
     <div class="menu-buttons">
       <button id="singlePlayerBtn" class="menu-btn">Одиночная игра</button>
-      <button id="multiPlayerBtn" class="menu-btn">Многопользовательская</button>
+      <button id="multiPlayerBtn" class="menu-btn">Многопользовательская игра</button>
     </div>
     <div class="leaderboard-btn" id="menuLeaderboardBtn">🏆</div>
     <div class="help-btn" id="helpBtn">?</div>
@@ -285,14 +266,14 @@
       <div class="game-title">Таблица лидеров</div>
       <div style="width:54px"></div>
     </div>
-    <div class="leaderboard-tabs">
-      <button class="lb-tab active" data-tab="overall">Все пользователи</button>
-      <button class="lb-tab" data-tab="all_orgs">Все учреждения</button>
-      <button class="lb-tab" data-tab="org">Одно учреждение</button>
-      <button class="lb-tab" data-tab="course">По курсу</button>
-      <button class="lb-tab" data-tab="group">По взводу/группе</button>
-    </div>
     <div class="leaderboard-toolbar">
+      <select id="lbTypeSelect">
+        <option value="overall">Общая таблица</option>
+        <option value="all_orgs">По всем учреждениям</option>
+        <option value="org">По учреждению</option>
+        <option value="course">По курсу</option>
+        <option value="group">По взводу/группе</option>
+      </select>
       <select id="lbOrgFilter"></select>
       <input id="lbCourseFilter" placeholder="Курс">
       <input id="lbGroupFilter" placeholder="Взвод/группа">
@@ -301,7 +282,7 @@
       <table>
         <thead>
           <tr>
-            <th>#</th><th>Игрок</th><th>Учреждение</th><th>Курс</th><th>Взвод/группа</th><th>Очки</th><th>Дата</th>
+            <th>#</th><th>Игрок</th><th>Учреждение</th><th>Курс</th><th>Взвод/группа</th><th>Очки</th><th>Режим</th><th>Дата</th>
           </tr>
         </thead>
         <tbody id="leaderboardBody"></tbody>
@@ -343,13 +324,6 @@
         <div id="splitView" class="split-container hidden">
           <div class="split-columns">
             <div class="split-left">
-              <div id="splitAnswerCard" class="year-slider-area">
-                <div id="splitAnswerDescription" style="font-weight:800;color:#0f172a;">—</div>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
-                  <span class="year-chip">Правильный год: <span id="splitCorrectYear">—</span></span>
-                  <span class="year-chip">Разница: <span id="splitYearDiff">—</span></span>
-                </div>
-              </div>
               <div id="distanceCard" class="distance-card">Разница: —</div>
               <div class="split-image">
                 <div id="splitImageWrapper" class="image-wrapper">
@@ -408,18 +382,7 @@
       const MAX_SCALE = 6;
       const OVERDRAW_PX = 25;
       const DRAG_THRESHOLD = 6;
-      const EDUCATION_ORGS = [
-        'Московский университет МВД России имени В. Я. Кикотя',
-        'Военная академия связи',
-        'Военно-космическая академия им. А.Ф. Можайского',
-        'Военно-медицинская академия',
-        'Михайловская военная артиллерийская академия',
-        'Другое',
-        'Не указано'
-      ];
-      // ВСТАВЬТЕ СЮДА ССЫЛКУ ИЗ Supabase → Settings → API → Project URL
-      const SUPABASE_URL = 'https://YOUR_PROJECT_REF.supabase.co';
-      const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Unnaf9P7DpAlSIloDOGDiQ_yRqkCuT0';
+      const EDUCATION_ORGS = ['Не указано', 'Военная академия связи', 'Михайловская военная артиллерийская академия', 'Военно-космическая академия им. А.Ф. Можайского', 'Военно-медицинская академия', 'Другое'];
 
       const byId = (id) => document.getElementById(id);
       const yearSlider = byId('yearSlider');
@@ -444,17 +407,14 @@
       const splitYearPoints = byId('splitYearPoints');
       const splitRoundPoints = byId('splitRoundPoints');
       const splitNextBtn = byId('splitNextBtn');
-      const splitAnswerDescription = byId('splitAnswerDescription');
-      const splitCorrectYear = byId('splitCorrectYear');
-      const splitYearDiff = byId('splitYearDiff');
       const switchViewBtn = byId('switchViewBtn');
       const switchIcon = byId('switchIcon');
       const playerOrgSelect = byId('playerOrgSelect');
       const lbOrgFilter = byId('lbOrgFilter');
+      const lbTypeSelect = byId('lbTypeSelect');
       const lbCourseFilter = byId('lbCourseFilter');
       const lbGroupFilter = byId('lbGroupFilter');
       const leaderboardBody = byId('leaderboardBody');
-      const lbTabs = [...document.querySelectorAll('.lb-tab')];
 
       const imageWrapper = byId('imageWrapper');
       const splitImageWrapper = byId('splitImageWrapper');
@@ -475,8 +435,6 @@
       let currentView = 'image';
       let gameMode = 'single';
       let currentPlayer = null;
-      let leaderboardTab = 'overall';
-      let supabase = null;
 
       let imgW = 0, imgH = 0, scale = 1, translateX = 0, translateY = 0, minScale = 0.15;
       let pointers = new Map();
@@ -502,17 +460,17 @@
         }, timeout);
       }
       function renderAnswerSummary(q, res) {
-        infoBlock.innerHTML = 'Определите место на карте и укажите наиболее вероятный год.';
-        splitAnswerDescription.textContent = q.description;
-        splitCorrectYear.textContent = q.correctYear;
-        splitYearDiff.textContent = `${res.yearDiff} лет`;
+        infoBlock.innerHTML = `
+          <div style="font-weight:800;color:#0f172a;">${q.description}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+            <span class="year-chip">Правильный год: ${q.correctYear}</span>
+            <span class="year-chip">Разница: ${res.yearDiff} лет</span>
+            <span class="year-chip">Дистанция: ${res.distKm.toFixed(1)} км</span>
+          </div>`;
       }
 
       function populateOrgSelects() {
-        const sorted = [...new Set(EDUCATION_ORGS)].sort((a, b) => a.localeCompare(b, 'ru'));
-        sorted.splice(sorted.indexOf('Московский университет МВД России имени В. Я. Кикотя'), 1);
-        sorted.unshift('Московский университет МВД России имени В. Я. Кикотя');
-        const optionsHtml = sorted.map((org) => `<option value="${org}">${org}</option>`).join('');
+        const optionsHtml = EDUCATION_ORGS.map((org) => `<option value="${org}">${org}</option>`).join('');
         playerOrgSelect.innerHTML = optionsHtml;
         lbOrgFilter.innerHTML = `<option value="">Все учреждения</option>${optionsHtml}`;
       }
@@ -520,70 +478,41 @@
         try { return JSON.parse(localStorage.getItem(PLAYER_KEY) || 'null'); } catch { return null; }
       }
       function savePlayerProfile(profile) { localStorage.setItem(PLAYER_KEY, JSON.stringify(profile)); }
-      async function loadLeaderboard() {
-        if (supabase) {
-          const { data } = await supabase.from('leaderboard').select('name,org,course,group_name,points,created_at').order('points', { ascending: false }).limit(500);
-          if (Array.isArray(data)) {
-            return data.map((r) => ({ name: r.name, org: r.org, course: r.course || '—', group: r.group_name || '—', points: r.points, date: r.created_at }));
-          }
-        }
+      function loadLeaderboard() {
         try { return JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]'); } catch { return []; }
       }
       function saveLeaderboard(entries) { localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries)); }
-      async function addLeaderboardEntry(points) {
+      function addLeaderboardEntry(points) {
         if (!currentPlayer) return;
-        const entry = {
+        const list = loadLeaderboard();
+        list.push({
           name: currentPlayer.name,
           org: currentPlayer.org,
           course: currentPlayer.course || '—',
           group: currentPlayer.group || '—',
           points: Math.floor(points),
+          mode: gameMode,
           date: new Date().toISOString()
-        };
-        if (supabase) {
-          await supabase.from('leaderboard').insert({
-            name: entry.name, org: entry.org, course: entry.course, group_name: entry.group, points: entry.points
-          });
-          return;
-        }
-        const list = await loadLeaderboard();
-        list.push(entry);
+        });
         saveLeaderboard(list);
       }
-      async function renderLeaderboard() {
-        const type = leaderboardTab;
+      function renderLeaderboard() {
+        const type = lbTypeSelect.value;
         const org = lbOrgFilter.value.trim();
         const course = lbCourseFilter.value.trim();
         const group = lbGroupFilter.value.trim().toLowerCase();
-        let rows = await loadLeaderboard();
-        lbOrgFilter.style.display = ['org', 'course', 'group'].includes(type) ? '' : 'none';
-        lbCourseFilter.style.display = type === 'course' ? '' : 'none';
-        lbGroupFilter.style.display = type === 'group' ? '' : 'none';
-
-        if (type === 'all_orgs') {
-          const grouped = {};
-          rows.forEach((r) => {
-            if (!grouped[r.org]) grouped[r.org] = { org: r.org, points: 0, count: 0 };
-            grouped[r.org].points += Number(r.points || 0);
-            grouped[r.org].count += 1;
-          });
-          rows = Object.values(grouped).map((g) => ({
-            name: `Средний балл (${g.count} игр)`,
-            org: g.org,
-            course: '—',
-            group: '—',
-            points: Math.round(g.points / Math.max(1, g.count)),
-            date: new Date().toISOString()
-          }));
-        } else {
-          if (type === 'org' && org) rows = rows.filter((r) => r.org === org);
-          if (type === 'course') rows = rows.filter((r) => (!org || r.org === org) && (!course || String(r.course) === course));
-          if (type === 'group') rows = rows.filter((r) => (!org || r.org === org) && (!group || String(r.group).toLowerCase() === group));
-        }
+        let rows = loadLeaderboard();
+        if (type === 'org' && org) rows = rows.filter((r) => r.org === org);
+        if (type === 'course' && course) rows = rows.filter((r) => String(r.course) === course);
+        if (type === 'group' && group) rows = rows.filter((r) => String(r.group).toLowerCase() === group);
+        if (type === 'all_orgs') rows = rows.filter((r) => r.org && r.org !== 'Не указано');
 
         rows.sort((a, b) => b.points - a.points);
-        leaderboardBody.innerHTML = rows.map((r, idx) => `<tr><td>${idx + 1}</td><td>${r.name}</td><td>${r.org}</td><td>${r.course}</td><td>${r.group}</td><td>${r.points}</td><td>${new Date(r.date).toLocaleDateString('ru-RU')}</td></tr>`).join('')
-          || '<tr><td colspan="7">Пока нет результатов.</td></tr>';
+        leaderboardBody.innerHTML = rows.map((r, idx) => `
+          <tr>
+            <td>${idx + 1}</td><td>${r.name}</td><td>${r.org}</td><td>${r.course}</td><td>${r.group}</td><td>${r.points}</td><td>${r.mode}</td><td>${new Date(r.date).toLocaleDateString('ru-RU')}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="8">Пока нет результатов.</td></tr>';
       }
       function resetSwitchButtonPosition() {
         switchViewBtn.style.right = '16px';
@@ -668,7 +597,7 @@
       }
 
       async function initSelectorMap() {
-        if (window.innerWidth < 768 || !window.ymaps) return;
+        if (window.innerWidth < 980 || !window.ymaps) return;
         return new Promise((resolve) => {
           ymaps.ready(() => {
             if (selectorMap) selectorMap.destroy();
@@ -871,7 +800,6 @@
         actionBtn.disabled = false;
         actionBtn.textContent = '✅ ПРОВЕРИТЬ';
         actionBtn.onclick = handleCheck;
-        actionBtn.style.display = '';
         splitNextBtn.onclick = null;
 
         setInfo('Определите место на карте и укажите наиболее вероятный год.', 2000);
@@ -914,7 +842,7 @@
         updateSplitImagePreview();
         initSplitMap().catch(console.error);
 
-        setInfo('Раунд завершён. Ознакомьтесь с результатом и перейдите к следующему вопросу.', 800);
+        setInfo('Раунд завершён. Ознакомьтесь с результатом и перейдите к следующему вопросу.', 3200);
         renderAnswerSummary(q, res);
 
         const goNext = () => {
@@ -929,7 +857,6 @@
         actionBtn.disabled = false;
         actionBtn.textContent = '➡️ СЛЕДУЮЩИЙ ВОПРОС';
         actionBtn.onclick = goNext;
-        if (window.innerWidth >= 768) actionBtn.style.display = 'none';
         splitNextBtn.onclick = goNext;
       }
 
@@ -942,7 +869,7 @@
             ? ['Хороший результат. Рекомендуется повторить материал для повышения точности.']
             : ['Рекомендуется повторная попытка для улучшения итогового результата.'];
 
-        if (gameMode === 'multi') addLeaderboardEntry(totalPoints).catch(console.error);
+        if (gameMode === 'multi') addLeaderboardEntry(totalPoints);
         byId('finalMessage').innerHTML = `Итоговый результат: ${Math.floor(totalPoints)} из ${maxPoints}<br>${messages[0]}`;
         const finalButtons = byId('finalButtons');
         finalButtons.innerHTML = '';
@@ -1180,19 +1107,14 @@
       byId('menuLeaderboardBtn').addEventListener('click', () => {
         byId('menuScreen').classList.add('hidden');
         byId('leaderboardScreen').classList.remove('hidden');
-        renderLeaderboard().catch(console.error);
+        renderLeaderboard();
       });
       byId('backFromLeaderboardBtn').addEventListener('click', () => {
         byId('leaderboardScreen').classList.add('hidden');
         byId('menuScreen').classList.remove('hidden');
       });
-      lbTabs.forEach((tabBtn) => tabBtn.addEventListener('click', () => {
-        leaderboardTab = tabBtn.dataset.tab;
-        lbTabs.forEach((b) => b.classList.toggle('active', b === tabBtn));
-        renderLeaderboard().catch(console.error);
-      }));
-      [lbOrgFilter].forEach((el) => el.addEventListener('change', () => renderLeaderboard().catch(console.error)));
-      [lbCourseFilter, lbGroupFilter].forEach((el) => el.addEventListener('input', () => renderLeaderboard().catch(console.error)));
+      [lbTypeSelect, lbOrgFilter].forEach((el) => el.addEventListener('change', renderLeaderboard));
+      [lbCourseFilter, lbGroupFilter].forEach((el) => el.addEventListener('input', renderLeaderboard));
 
       byId('closeGameModeModal').addEventListener('click', () => byId('gameModeModal').classList.add('hidden'));
       byId('closePlayerDataModal').addEventListener('click', () => byId('playerDataModal').classList.add('hidden'));
@@ -1224,12 +1146,6 @@
           }
         });
       });
-      if (window.supabase?.createClient && SUPABASE_URL.includes('supabase.co')) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-        if (SUPABASE_URL.includes('YOUR_PROJECT_REF')) {
-          console.warn('Укажите реальный SUPABASE_URL в константе SUPABASE_URL.');
-        }
-      }
       populateOrgSelects();
       currentPlayer = loadPlayerProfile();
     })();
