@@ -21,6 +21,14 @@ grant execute on function public.get_server_now() to anon, authenticated;
 drop table if exists public.room_players cascade;
 drop table if exists public.rooms cascade;
 
+drop function if exists public.create_game_room(text, text, int, int);
+drop function if exists public.join_game_room(text, text, text);
+drop function if exists public.set_player_ready(uuid, text, boolean);
+drop function if exists public.start_game(uuid, text);
+drop function if exists public.start_game_room(uuid, text, int, int, boolean, boolean, int[]);
+drop function if exists public.submit_answer(uuid, text, double precision, double precision, int);
+drop function if exists public.get_room_players(uuid);
+
 -- =====================================================
 -- ROOMS
 -- =====================================================
