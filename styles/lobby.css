@@ -1,0 +1,61 @@
+.lobby-screen {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  gap: 20px;
+  background: linear-gradient(160deg, #1e3a8a 0%, #0f172a 55%, #1e293b 100%);
+  color: #f8fafc;
+}
+
+.lobby-card {
+  width: min(420px, 100%);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  backdrop-filter: blur(12px);
+}
+
+.lobby-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.lobby-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(15, 23, 42, 0.5);
+  color: #f8fafc;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.lobby-input::placeholder {
+  color: rgba(248, 250, 252, 0.5);
+}
+
+.lobby-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lobby-error {
+  color: #fca5a5;
+  font-size: 0.9rem;
+  text-align: center;
+  min-height: 1.2em;
+}
+
+.lobby-divider {
+  text-align: center;
+  color: rgba(248, 250, 252, 0.6);
+  font-size: 0.85rem;
+}

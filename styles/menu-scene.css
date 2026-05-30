@@ -23,3 +23,13 @@
       border: none; background: #1e3a8a; color: #fff; border-radius: 999px; padding: 13px 28px;
       font-size: 1rem; font-weight: 700; cursor: pointer;
     }
+
+    .menu-btn-secondary {
+      background: #64748b;
+    }
+
+    .menu-screen .menu-btn-secondary {
+      background: #475569;
+    }
+
+    .header-spacer { width: 54px; }

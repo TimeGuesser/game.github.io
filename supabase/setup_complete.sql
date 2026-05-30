@@ -1,0 +1,420 @@
+-- =====================================================
+-- HISTORY GUESSER — ULTRA FAST MULTIPLAYER SETUP
+-- OPTIMIZED FOR REALTIME (20-80ms)
+-- =====================================================
+
+create extension if not exists "pgcrypto";
+
+create or replace function public.get_server_now()
+returns timestamptz
+language sql
+stable
+security invoker
+as $$ select now(); $$;
+
+grant execute on function public.get_server_now() to anon, authenticated;
+
+-- =====================================================
+-- DROP OLD STUFF
+-- =====================================================
+
+drop table if exists public.room_players cascade;
+drop table if exists public.rooms cascade;
+
+-- =====================================================
+-- ROOMS
+-- =====================================================
+
+create table public.rooms (
+  id uuid primary key default gen_random_uuid(),
+
+  code text not null unique,
+
+  status text not null default 'lobby'
+    check (status in ('lobby', 'playing', 'round_result', 'finished')),
+
+  host_client_id text not null,
+
+  total_rounds int not null default 5,
+  timer_duration_sec int not null default 60,
+
+  current_round int not null default 0,
+
+  question_indices int[] not null default '{}',
+
+  round_started_at timestamptz,
+
+  created_at timestamptz not null default now()
+);
+
+create index rooms_code_idx
+on public.rooms(code);
+
+create index rooms_status_idx
+on public.rooms(status);
+
+-- =====================================================
+-- PLAYERS
+-- =====================================================
+
+create table public.room_players (
+  id uuid primary key default gen_random_uuid(),
+
+  room_id uuid not null
+    references public.rooms(id)
+    on delete cascade,
+
+  client_id text not null,
+
+  name text not null,
+
+  score int not null default 0,
+
+  ready boolean not null default false,
+
+  answered boolean not null default false,
+
+  answer_lat double precision,
+  answer_lng double precision,
+  answer_year int,
+
+  last_round_score int not null default 0,
+
+  joined_at timestamptz not null default now(),
+
+  unique(room_id, client_id)
+);
+
+-- =====================================================
+-- IMPORTANT INDEXES
+-- =====================================================
+
+create index room_players_room_idx
+on public.room_players(room_id);
+
+create index room_players_room_ready_idx
+on public.room_players(room_id, ready);
+
+create index room_players_room_client_idx
+on public.room_players(room_id, client_id);
+
+create index room_players_joined_idx
+on public.room_players(joined_at);
+
+-- =====================================================
+-- DISABLE RLS (VERY IMPORTANT FOR SPEED)
+-- =====================================================
+
+alter table public.rooms disable row level security;
+alter table public.room_players disable row level security;
+
+grant usage on schema public to anon, authenticated;
+grant all on public.rooms to anon, authenticated;
+grant all on public.room_players to anon, authenticated;
+
+-- =====================================================
+-- REALTIME
+-- ONLY ROOMS!!!
+-- =====================================================
+
+do $$
+begin
+  alter publication supabase_realtime add table public.rooms;
+exception when duplicate_object then
+  null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime drop table public.room_players;
+exception when undefined_object then
+  null;
+end $$;
+
+-- =====================================================
+-- CREATE ROOM
+-- FAST VERSION
+-- =====================================================
+
+create or replace function public.create_game_room(
+  p_host_name text,
+  p_client_id text,
+  p_total_rounds int default 5,
+  p_timer_sec int default 60
+)
+returns jsonb
+language plpgsql
+security invoker
+as $$
+declare
+  v_room_id uuid;
+  v_code text;
+begin
+
+  v_code :=
+    upper(substr(md5(random()::text || clock_timestamp()::text), 1, 6));
+
+  insert into public.rooms (
+    code,
+    host_client_id,
+    total_rounds,
+    timer_duration_sec
+  )
+  values (
+    v_code,
+    p_client_id,
+    greatest(1, least(p_total_rounds, 15)),
+    greatest(15, least(p_timer_sec, 300))
+  )
+  returning id into v_room_id;
+
+  insert into public.room_players (
+    room_id,
+    client_id,
+    name
+  )
+  values (
+    v_room_id,
+    p_client_id,
+    trim(p_host_name)
+  );
+
+  return jsonb_build_object(
+    'room_id', v_room_id,
+    'code', v_code
+  );
+
+end;
+$$;
+
+grant execute on function public.create_game_room(
+  text,
+  text,
+  int,
+  int
+) to anon, authenticated;
+
+-- =====================================================
+-- JOIN ROOM
+-- FAST VERSION
+-- =====================================================
+
+create or replace function public.join_game_room(
+  p_code text,
+  p_client_id text,
+  p_player_name text
+)
+returns jsonb
+language plpgsql
+security invoker
+as $$
+declare
+  v_room_id uuid;
+  v_count int;
+begin
+
+  select id
+  into v_room_id
+  from public.rooms
+  where code = upper(trim(p_code))
+  limit 1;
+
+  if v_room_id is null then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  select count(*)
+  into v_count
+  from public.room_players
+  where room_id = v_room_id;
+
+  if v_count >= 30 then
+    raise exception 'ROOM_FULL';
+  end if;
+
+  insert into public.room_players (
+    room_id,
+    client_id,
+    name
+  )
+  values (
+    v_room_id,
+    p_client_id,
+    trim(p_player_name)
+  )
+  on conflict (room_id, client_id)
+  do update set
+    name = excluded.name;
+
+  return jsonb_build_object(
+    'success', true,
+    'room_id', v_room_id
+  );
+
+end;
+$$;
+
+grant execute on function public.join_game_room(
+  text,
+  text,
+  text
+) to anon, authenticated;
+
+-- =====================================================
+-- READY BUTTON
+-- ULTRA FAST
+-- =====================================================
+
+create or replace function public.set_player_ready(
+  p_room_id uuid,
+  p_client_id text,
+  p_ready boolean
+)
+returns boolean
+language plpgsql
+security invoker
+as $$
+begin
+
+  update public.room_players
+  set ready = p_ready
+  where
+    room_id = p_room_id
+    and client_id = p_client_id;
+
+  return true;
+
+end;
+$$;
+
+grant execute on function public.set_player_ready(
+  uuid,
+  text,
+  boolean
+) to anon, authenticated;
+
+-- =====================================================
+-- START GAME
+-- =====================================================
+
+create or replace function public.start_game(
+  p_room_id uuid,
+  p_client_id text
+)
+returns boolean
+language plpgsql
+security invoker
+as $$
+declare
+  v_host text;
+  v_not_ready int;
+begin
+
+  select host_client_id
+  into v_host
+  from public.rooms
+  where id = p_room_id;
+
+  if v_host <> p_client_id then
+    raise exception 'NOT_HOST';
+  end if;
+
+  select count(*)
+  into v_not_ready
+  from public.room_players
+  where
+    room_id = p_room_id
+    and ready = false;
+
+  if v_not_ready > 0 then
+    raise exception 'PLAYERS_NOT_READY';
+  end if;
+
+  update public.rooms
+  set
+    status = 'playing',
+    current_round = 1,
+    round_started_at = now()
+  where id = p_room_id;
+
+  return true;
+
+end;
+$$;
+
+grant execute on function public.start_game(
+  uuid,
+  text
+) to anon, authenticated;
+
+-- =====================================================
+-- SUBMIT ANSWER
+-- =====================================================
+
+create or replace function public.submit_answer(
+  p_room_id uuid,
+  p_client_id text,
+  p_lat double precision,
+  p_lng double precision,
+  p_year int
+)
+returns boolean
+language plpgsql
+security invoker
+as $$
+begin
+
+  update public.room_players
+  set
+    answered = true,
+    answer_lat = p_lat,
+    answer_lng = p_lng,
+    answer_year = p_year
+  where
+    room_id = p_room_id
+    and client_id = p_client_id;
+
+  return true;
+
+end;
+$$;
+
+grant execute on function public.submit_answer(
+  uuid,
+  text,
+  double precision,
+  double precision,
+  int
+) to anon, authenticated;
+
+-- =====================================================
+-- GET PLAYERS
+-- USE ONLY ON JOIN / RECONNECT
+-- =====================================================
+
+create or replace function public.get_room_players(
+  p_room_id uuid
+)
+returns table (
+  client_id text,
+  name text,
+  score int,
+  ready boolean,
+  answered boolean
+)
+language sql
+security invoker
+as $$
+  select
+    rp.client_id,
+    rp.name,
+    rp.score,
+    rp.ready,
+    rp.answered
+  from public.room_players rp
+  where rp.room_id = p_room_id
+  order by rp.joined_at;
+$$;
+
+grant execute on function public.get_room_players(uuid)
+to anon, authenticated;

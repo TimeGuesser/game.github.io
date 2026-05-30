@@ -2,27 +2,25 @@ import { FULL_QUESTIONS } from './data/questions.js';
 
 import {
   SAVE_KEY,
-  LEADERBOARD_KEY,
   PLAYER_KEY,
-  saveJSON,
   loadJSON,
   removeJSON
 } from './storage/storage.js';
 
-import {
-  byId,
-  show,
-  hide,
-  toggle
-} from './utils/dom.js';
+import { byId } from './utils/dom.js';
+import { calcPoints } from './utils/scoring.js';
+import { getLeaderboard } from './api/leaderboardApi.js';
+import { showFinishModal } from './utils/leaderboardFinish.js';
+import { registerGameBridge } from './gameBridge.js';
+import { initMultiplayer, openMultiplayerFromMenu } from './multiplayer/lobby.js';
+import { submitLocalAnswer, markLocalSubmitted } from './multiplayer/sync.js';
+import { getClientId } from './utils/clientId.js';
+import { getLocalPlayer } from './multiplayer/roomState.js';
+import { getRoomState } from './multiplayer/room.js';
 
 (() => {
 
-      const SUPABASE_URL = 'https://zlxjshorwqmntjqadgdz.supabase.co';
       const QUESTIONS_PER_GAME = 5;
-      const SAVE_KEY = 'historyguesser_save';
-      const LEADERBOARD_KEY = 'historyguesser_leaderboard_v1';
-      const PLAYER_KEY = 'historyguesser_player_profile_v1';
       const MAX_SCALE = 6;
       const OVERDRAW_PX = 25;
       const DRAG_THRESHOLD = 6;
@@ -116,69 +114,6 @@ import {
         try { return JSON.parse(localStorage.getItem(PLAYER_KEY) || 'null'); } catch { return null; }
       }
       function savePlayerProfile(profile) { localStorage.setItem(PLAYER_KEY, JSON.stringify(profile)); }
-      // ── Supabase ──────────────────────────────────────────────────────────
-      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpseGpzaG9yd3FtbnRqcWFkZ2R6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNjg0NTcsImV4cCI6MjA5MDY0NDQ1N30.PMkUf1lW6lINc0QBrDrTxe77gZQzMX-p_4OKiyHB7j0';
-
-      async function sbFetch(path, options = {}) {
-        const res = await fetch(SUPABASE_URL + path, {
-          ...options,
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-            'Prefer': options.prefer || '',
-            ...(options.headers || {})
-          }
-        });
-        if (!res.ok) {
-          const err = await res.text();
-          throw new Error('Supabase error ' + res.status + ': ' + err);
-        }
-        return res.status === 204 ? null : res.json();
-      }
-
-      async function addLeaderboardEntry(points) {
-        if (!currentPlayer) return;
-        const entry = {
-          name: currentPlayer.name,
-          org: currentPlayer.org || 'Не указано',
-          course: currentPlayer.course || '—',
-          grp: currentPlayer.group || '—',
-          points: Math.floor(points),
-          created_at: new Date().toISOString()
-        };
-        // Сохраняем локально всегда (резервная копия)
-        try {
-          const list = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]');
-          list.push({ ...entry, group: entry.grp });
-          localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(list));
-        } catch {}
-        // Пробуем отправить в Supabase
-        try {
-          await sbFetch('/rest/v1/leaderboard', {
-            method: 'POST',
-            prefer: 'return=minimal',
-            body: JSON.stringify(entry)
-          });
-        } catch (e) {
-          console.warn('Supabase write failed, используются локальные данные:', e.message);
-        }
-      }
-
-      async function loadLeaderboardData() {
-        // Сначала пробуем Supabase
-        try {
-          const rows = await sbFetch('/rest/v1/leaderboard?select=*&order=points.desc&limit=500');
-          if (Array.isArray(rows)) {
-            // Нормализуем поле group (в БД может быть grp)
-            return rows.map(r => ({ ...r, group: r.grp || r.group || '—' }));
-          }
-        } catch (e) {
-          console.warn('Supabase read failed, используются локальные данные:', e.message);
-        }
-        // Фоллбэк — локальное хранилище
-        try { return JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]'); } catch { return []; }
-      }
 
       async function renderLeaderboard() {
         const type = lbActiveTab;
@@ -197,7 +132,7 @@ import {
         const thead = byId('lbThead');
         leaderboardBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#64748b;">Загрузка...</td></tr>';
 
-        let rows = await loadLeaderboardData();
+        let rows = await getLeaderboard();
 
         if (type === 'all_orgs') {
           rows = rows.filter(r => r.org && r.org !== 'Не указано');
@@ -249,37 +184,6 @@ import {
         return saved ? JSON.parse(saved) : null;
       }
       function clearGameState() { localStorage.removeItem(SAVE_KEY); }
-
-      function calcPoints(userLat, userLng, userYear, correctLat, correctLng, correctYear) {
-        const R = 6371;
-        const dLat = (correctLat - userLat) * Math.PI / 180;
-        const dLng = (correctLng - userLng) * Math.PI / 180;
-        const a = Math.sin(dLat / 2) ** 2 + Math.cos(userLat * Math.PI / 180) * Math.cos(correctLat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-        const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        const yearDiff = Math.abs(userYear - correctYear);
-        const pointsYear = Math.max(0, 500 - yearDiff * 10);
-
-        // Distance scoring: 150м→500, 100км→350, 250км→250, 500км→100, 1000км→50, 2500км→0
-        let pointsDist = 0;
-        if (distKm <= 0.15) {
-          pointsDist = 500;
-        } else if (distKm <= 100) {
-          pointsDist = Math.round(350 + (500 - 350) * (1 - (distKm - 0.15) / (100 - 0.15)));
-        } else if (distKm <= 250) {
-          pointsDist = Math.round(250 + (350 - 250) * (1 - (distKm - 100) / (250 - 100)));
-        } else if (distKm <= 500) {
-          pointsDist = Math.round(100 + (250 - 100) * (1 - (distKm - 250) / (500 - 250)));
-        } else if (distKm <= 1000) {
-          pointsDist = Math.round(50 + (100 - 50) * (1 - (distKm - 500) / (1000 - 500)));
-        } else if (distKm <= 2500) {
-          pointsDist = Math.round(50 * (1 - (distKm - 1000) / (2500 - 1000)));
-        } else {
-          pointsDist = 0;
-        }
-
-        return { total: pointsYear + pointsDist, distKm, yearDiff, pointsYear, pointsDist };
-      }
 
       function hideCopyrights() {
         const selectors = [
@@ -570,7 +474,14 @@ import {
         selectedLat = selectedLng = null;
 
         const q = currentQuestions[currentIndex];
-        roundBadge.textContent = `Раунд ${currentIndex + 1}/${currentQuestions.length}`;
+        const totalRounds = gameMode === 'room'
+          ? (getRoomState()?.totalRounds ?? currentQuestions.length)
+          : currentQuestions.length;
+        roundBadge.textContent = `Раунд ${currentIndex + 1}/${totalRounds}`;
+        if (gameMode === 'room') {
+          const local = getLocalPlayer(getRoomState(), getClientId());
+          totalPoints = local?.score ?? 0;
+        }
         totalScoreSpan.textContent = Math.floor(totalPoints);
         yearSliderArea.style.display = '';
         roundScoreCards.classList.add('hidden');
@@ -601,9 +512,10 @@ import {
         actionBtn.disabled = false;
         actionBtn.style.display = '';
         actionBtn.textContent = '✅ ПРОВЕРИТЬ';
-        actionBtn.onclick = handleCheck;
+        actionBtn.onclick = gameMode === 'room' ? handleRoomCheck : handleCheck;
         splitNextBtn.onclick = null;
         splitNextBtn.textContent = '➡️ СЛЕДУЮЩИЙ ВОПРОС';
+        splitNextBtn.style.display = gameMode === 'room' ? 'none' : '';
 
         setInfo('Определите место на карте и укажите наиболее вероятный год.', 2000);
         loadImage(q.imageUrl, q.description);
@@ -613,20 +525,32 @@ import {
         setTimeout(() => map?.container?.fitToViewport(), 50);
       }
 
-      function handleCheck() {
+      async function handleRoomCheck() {
         if (questionAnswered || waitingNext) return;
         if (selectedLat == null || selectedLng == null) return setInfo('Сначала выберите точку на карте.', 2200);
 
-        const q = currentQuestions[currentIndex];
-        const res = calcPoints(selectedLat, selectedLng, selectedYear, q.correctLat, q.correctLng, q.correctYear);
+        const state = getRoomState();
+        const local = getLocalPlayer(state, getClientId());
+        if (!local) return;
 
-        totalPoints += res.total;
-        totalScoreSpan.textContent = Math.floor(totalPoints);
+        actionBtn.disabled = true;
+        await submitLocalAnswer(local.id, selectedLat, selectedLng, selectedYear);
+        markLocalSubmitted();
+        questionAnswered = true;
+        setInfo('Ответ отправлен. Ожидайте окончания раунда.', 10000);
+      }
+
+      function showResultUI(q, res, lat, lng, year) {
+        if (lat != null && lng != null) {
+          selectedLat = lat;
+          selectedLng = lng;
+          selectedYear = year;
+          applyUserSelection([lat, lng]);
+        }
 
         drawAnswerOnMainMap(q);
         questionAnswered = true;
         waitingNext = true;
-        saveGameState();
 
         yearSliderArea.style.display = 'none';
         toggleViewDiv.classList.add('hidden');
@@ -636,12 +560,9 @@ import {
         zoomButtons.style.display = 'none';
         actionBtn.style.display = 'none';
         roundScoreCards.classList.add('hidden');
-
-        // В сцене результата скрываем infoBlock на всех устройствах
         infoBlock.style.display = 'none';
 
         distanceCard.textContent = `Расстояние: ${res.distKm.toFixed(1)} км`;
-        // Только splitView карточки — roundScoreCards в control-bar скрыты на ПК в результате
         splitDistancePoints.textContent = res.pointsDist;
         splitYearPoints.textContent = res.pointsYear;
         splitRoundPoints.textContent = res.total;
@@ -658,6 +579,20 @@ import {
           updateMobileResultLayout();
           updateSplitImagePreview();
         });
+      }
+
+      function handleCheck() {
+        if (gameMode === 'room') return handleRoomCheck();
+        if (questionAnswered || waitingNext) return;
+        if (selectedLat == null || selectedLng == null) return setInfo('Сначала выберите точку на карте.', 2200);
+
+        const q = currentQuestions[currentIndex];
+        const res = calcPoints(selectedLat, selectedLng, selectedYear, q.correctLat, q.correctLng, q.correctYear);
+
+        totalPoints += res.total;
+        totalScoreSpan.textContent = Math.floor(totalPoints);
+        saveGameState();
+        showResultUI(q, res, selectedLat, selectedLng, selectedYear);
 
         const goNext = () => {
           currentIndex += 1;
@@ -673,56 +608,101 @@ import {
         splitNextBtn.onclick = goNext;
       }
 
+      function destroyMaps() {
+        map?.destroy(); map = null;
+        splitMap?.destroy(); splitMap = null;
+        selectorMap?.destroy(); selectorMap = null;
+      }
+
+      function goToMenu() {
+        byId('gameScreen').classList.add('hidden');
+        byId('gameScreen').classList.remove('room-mode');
+        byId('menuScreen').classList.remove('hidden');
+        byId('leaderboardScreen').classList.add('hidden');
+        byId('lobbyScreen').classList.add('hidden');
+        byId('roomScreen').classList.add('hidden');
+        destroyMaps();
+      }
+
       function finishGame() {
+        if (gameMode === 'room') return;
+
         const maxPoints = currentQuestions.length * 1000;
         const percent = (totalPoints / maxPoints) * 100;
         const messages = percent >= 80
-          ? ['Вы продемонстрировали высокий уровень исторической и географической точности.']
+          ? 'Вы продемонстрировали высокий уровень исторической и географической точности.'
           : percent >= 50
-            ? ['Хороший результат. Рекомендуется повторить материал для повышения точности.']
-            : ['Рекомендуется повторная попытка для улучшения итогового результата.'];
+            ? 'Хороший результат. Рекомендуется повторить материал для повышения точности.'
+            : 'Рекомендуется повторная попытка для улучшения итогового результата.';
 
-        if (gameMode === 'multi') addLeaderboardEntry(totalPoints);
-        byId('finalMessage').innerHTML = `Итоговый результат: ${Math.floor(totalPoints)} из ${maxPoints}<br>${messages[0]}`;
-        const finalButtons = byId('finalButtons');
-        finalButtons.innerHTML = '';
-
-        const againBtn = document.createElement('button');
-        againBtn.className = 'modal-btn';
-        againBtn.textContent = 'Новая игра';
-        againBtn.onclick = () => { byId('finalModal').classList.add('hidden'); startGame(false, gameMode); };
-
-        const menuBtn = document.createElement('button');
-        menuBtn.className = 'modal-btn';
-        menuBtn.textContent = 'Главное меню';
-        menuBtn.onclick = () => {
-          byId('finalModal').classList.add('hidden');
-          byId('gameScreen').classList.add('hidden');
-          byId('menuScreen').classList.remove('hidden');
-          map?.destroy(); map = null;
-          splitMap?.destroy(); splitMap = null;
-          selectorMap?.destroy(); selectorMap = null;
-        };
-
-        finalButtons.append(againBtn, menuBtn);
-        if (gameMode === 'multi') {
-          const lbBtn = document.createElement('button');
-          lbBtn.className = 'modal-btn';
-          lbBtn.textContent = 'Таблица лидеров';
-          lbBtn.onclick = () => {
-            byId('finalModal').classList.add('hidden');
-            byId('gameScreen').classList.add('hidden');
-            byId('menuScreen').classList.add('hidden');
-            byId('leaderboardScreen').classList.remove('hidden');
-            renderLeaderboard();
-          };
-          finalButtons.append(lbBtn);
-        }
-        byId('finalModal').classList.remove('hidden');
+        const profile = currentPlayer || loadPlayerProfile();
+        showFinishModal({
+          message: `Итоговый результат: ${Math.floor(totalPoints)} из ${maxPoints}<br>${messages}`,
+          points: totalPoints,
+          profile,
+          onMenu: () => {
+            clearGameState();
+            goToMenu();
+          },
+          onAgain: () => {
+            clearGameState();
+            startGame(false, 'single');
+          }
+        });
         clearGameState();
       }
 
+      async function ensureRoomMaps() {
+        if (!map) await initMainMap();
+        if (!selectorMap && isDesktop()) await initSelectorMap();
+      }
+
+      async function enterRoomGame(state, question) {
+        gameMode = 'room';
+        byId('lobbyScreen').classList.add('hidden');
+        byId('roomScreen').classList.add('hidden');
+        byId('menuScreen').classList.add('hidden');
+        byId('leaderboardScreen').classList.add('hidden');
+        byId('gameScreen').classList.remove('hidden');
+        gameScreen.classList.add('room-mode');
+        gameScreen.classList.remove('result-mode');
+
+        currentQuestions = state.questionIndices.map((i) => FULL_QUESTIONS[i]);
+        currentIndex = state.currentRound;
+        const local = getLocalPlayer(state, getClientId());
+        totalPoints = local?.score ?? 0;
+
+        await ensureRoomMaps();
+        loadQuestion();
+      }
+
+      function showRoomRoundResult(state, q) {
+        const local = getLocalPlayer(state, getClientId());
+        const lat = local?.answer_lat ?? selectedLat;
+        const lng = local?.answer_lng ?? selectedLng;
+        const year = local?.answer_year ?? selectedYear;
+
+        let res = { distKm: 0, yearDiff: 0, pointsDist: 0, pointsYear: 0, total: 0 };
+        if (lat != null && lng != null && year != null) {
+          res = calcPoints(lat, lng, year, q.correctLat, q.correctLng, q.correctYear);
+        }
+
+        totalPoints = local?.score ?? totalPoints;
+        totalScoreSpan.textContent = Math.floor(totalPoints);
+        showResultUI(q, res, lat, lng, year);
+        splitNextBtn.style.display = 'none';
+      }
+
+      function exitRoomGame() {
+        gameScreen.classList.remove('result-mode');
+        gameScreen.classList.add('hidden');
+        splitViewDiv.classList.add('hidden');
+        controlBar.style.display = '';
+        byId('mpRoundLeaderboard')?.classList.add('hidden');
+      }
+
       async function startGame(useSaved = false, mode = 'single') {
+        if (mode === 'room') return;
         gameMode = mode;
         byId('menuScreen').classList.add('hidden');
         byId('leaderboardScreen').classList.add('hidden');
@@ -781,7 +761,7 @@ import {
         }
         selectedYear = Number(yearSlider.value);
         yearValueDisplay.textContent = selectedYear;
-        saveGameState();
+        if (gameMode === 'single') saveGameState();
       });
 
       imageWrapper.addEventListener('pointerdown', (e) => {
@@ -901,15 +881,24 @@ import {
         byId('gameModeModal').classList.remove('hidden');
       });
 
-      byId('multiPlayerBtn').addEventListener('click', () => {
+      function openProfileModal() {
         const profile = loadPlayerProfile();
         byId('playerNameInput').value = profile?.name || '';
         byId('playerOrgSelect').value = profile?.org || 'Не указано';
         byId('playerCourseInput').value = profile?.course || '';
         byId('playerGroupInput').value = profile?.group || '';
         byId('playerDataModal').classList.remove('hidden');
+      }
+
+      byId('profileBtn')?.addEventListener('click', openProfileModal);
+
+      byId('multiPlayerBtn').addEventListener('click', () => {
+        const profile = loadPlayerProfile();
+        if (profile) currentPlayer = profile;
+        openMultiplayerFromMenu();
       });
-      byId('startMultiBtn').addEventListener('click', () => {
+
+      byId('saveProfileBtn')?.addEventListener('click', () => {
         const name = byId('playerNameInput').value.trim();
         if (!name) return alert('Введите ФИО или никнейм.');
         currentPlayer = {
@@ -920,8 +909,6 @@ import {
         };
         savePlayerProfile(currentPlayer);
         byId('playerDataModal').classList.add('hidden');
-        clearGameState();
-        startGame(false, 'multi');
       });
 
       byId('menuLeaderboardBtn').addEventListener('click', () => {
@@ -959,16 +946,18 @@ import {
       byId('closeRulesBtn').addEventListener('click', () => byId('rulesModal').classList.add('hidden'));
       byId('closeFinalModal').addEventListener('click', () => byId('finalModal').classList.add('hidden'));
 
-      byId('backToMenuBtn').addEventListener('click', () => {
-        byId('gameScreen').classList.add('hidden');
-        byId('menuScreen').classList.remove('hidden');
-        byId('leaderboardScreen').classList.add('hidden');
+      byId('backToMenuBtn').addEventListener('click', async () => {
+        if (gameMode === 'room') {
+          const { cleanupSync } = await import('./multiplayer/sync.js');
+          const { leaveCurrentRoom } = await import('./multiplayer/room.js');
+          cleanupSync();
+          await leaveCurrentRoom();
+        }
+        byId('finalModal').classList.add('hidden');
         byId('gameModeModal').classList.add('hidden');
         byId('playerDataModal').classList.add('hidden');
-        byId('finalModal').classList.add('hidden');
-        map?.destroy(); map = null;
-        splitMap?.destroy(); splitMap = null;
-        selectorMap?.destroy(); selectorMap = null;
+        gameMode = 'single';
+        goToMenu();
       });
 
       window.addEventListener('resize', () => {
@@ -994,4 +983,21 @@ import {
       });
       populateOrgSelects();
       currentPlayer = loadPlayerProfile();
+
+      registerGameBridge({
+        enterRoomGame,
+        showRoomRoundResult,
+        exitRoomGame,
+        submitRoomAnswer: async (playerId) => {
+          if (selectedLat == null || selectedLng == null) {
+            await submitLocalAnswer(playerId, 55.75, 37.62, selectedYear);
+          } else {
+            await submitLocalAnswer(playerId, selectedLat, selectedLng, selectedYear);
+          }
+          markLocalSubmitted();
+        },
+        renderLeaderboard
+      });
+
+      initMultiplayer();
 })();

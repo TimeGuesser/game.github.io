@@ -1,0 +1,211 @@
+---
+alwaysApply: true
+---
+
+Архитектура проекта
+Главная идея
+
+Проект разделён:
+
+JS = логика
+CSS = внешний вид
+scenes = визуальные сцены
+storage = сохранения
+data = база вопросов
+api = backend layer
+Структура проекта
+project/
+│
+├── index.html
+│
+├── styles/
+│   ├── base.css
+│   ├── menu-scene.css
+│   ├── game-scene.css
+│   ├── result-scene.css
+│   ├── leaderboard-scene.css
+│   ├── buttons.css
+│   ├── map.css
+│   ├── slider.css
+│   ├── modals.css
+│   ├── components.css
+│   └── responsive.css
+│
+├── js/
+│   ├── game.js
+│   │
+│   ├── data/
+│   │   └── questions.js
+│   │
+│   ├── storage/
+│   │   └── storage.js
+│   │
+│   ├── utils/
+│   │   └── dom.js
+│   │
+│   ├── config/
+│   │   └── supabase.js
+│   │
+│   └── api/
+│       └── leaderboardApi.js
+Где что находится
+styles/
+base.css
+
+Глобальные стили:
+
+body
+html
+reset
+typography
+hidden
+root variables
+menu-scene.css
+
+Только меню:
+
+main menu
+start button
+menu layout
+title
+menu responsive
+game-scene.css
+
+Только игровой экран:
+
+игровая карта
+изображение
+split layout
+HUD
+игровой интерфейс
+controls
+result-scene.css
+
+Экран результата:
+
+правильный ответ
+result map
+result image
+score blocks
+next round button
+leaderboard-scene.css
+
+Только leaderboard:
+
+таблица
+filters
+sorting
+player cards
+map.css
+
+Все стили карт:
+
+Yandex Maps container
+map sizing
+map responsive
+map overlays
+slider.css
+
+Только year slider:
+
+thumb
+track
+animations
+buttons.css
+
+Все кнопки:
+
+primary button
+secondary button
+hover
+active
+disabled
+responsive.css
+
+ВСЕ media queries.
+
+Важно: Новые media queries добавлять ТОЛЬКО сюда.
+
+JS Architecture
+game.js
+
+Главный файл игры.
+
+Отвечает за:
+
+gameplay
+game state
+round switching
+timer
+points
+multiplayer sync
+scene switching
+map interaction
+image loading
+
+Нельзя:
+
+писать CSS сюда
+хранить большие массивы данных
+писать HTML
+questions.js
+
+Только база вопросов.
+
+Каждый вопрос:
+
+{
+  imageUrl,
+  year,
+  lat,
+  lng,
+  title
+}
+storage.js
+
+Только:
+
+localStorage
+save
+load
+cached data
+settings
+dom.js
+
+DOM helper functions.
+
+Например:
+
+byId()
+show()
+hide()
+supabase.js
+
+Только:
+
+SUPABASE_URL
+SUPABASE_KEY
+config
+
+Никакой логики.
+
+leaderboardApi.js
+
+Только:
+
+leaderboard fetch
+leaderboard save
+backend requests
+
+js/multiplayer/
+
+Только realtime multiplayer:
+
+lobby.js — создание/вход в комнату
+room.js — lifecycle комнаты
+realtime.js — Supabase channels
+sync.js — синхронизация раундов
+timerSync.js — серверный таймер
+roomState.js / playerState.js — состояние
+multiplayerUI.js — UI лобби/комнаты
+multiplayerApi.js — CRUD комнат

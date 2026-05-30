@@ -17,12 +17,15 @@
 <link rel="stylesheet" href="styles/map.css">
 <link rel="stylesheet" href="styles/slider.css">
 <link rel="stylesheet" href="styles/components.css">
+<link rel="stylesheet" href="styles/lobby.css">
+<link rel="stylesheet" href="styles/room.css">
+<link rel="stylesheet" href="styles/multiplayer-scene.css">
 <link rel="stylesheet" href="styles/responsive.css">
 
   <script src="https://api-maps.yandex.ru/2.1/?apikey=c03f89a7-f0e9-47b7-95f0-57e818aa7701&lang=ru_RU" type="text/javascript"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <div id="gameModeModal" class="modal hidden">
     <div class="modal-content">
       <div class="modal-close" id="closeGameModeModal">✕</div>
@@ -34,7 +37,7 @@
   <div id="playerDataModal" class="modal hidden">
     <div class="modal-content">
       <div class="modal-close" id="closePlayerDataModal">✕</div>
-      <p style="font-size:1.25rem;font-weight:800;text-align:center;">Данные игрока</p>
+      <p class="modal-heading">Данные игрока</p>
       <div class="player-form">
         <input id="playerNameInput" placeholder="ФИО или никнейм">
         <select id="playerOrgSelect"></select>
@@ -42,7 +45,7 @@
         <input id="playerGroupInput" placeholder="Взвод / группа">
       </div>
       <div class="modal-buttons">
-        <button class="modal-btn" id="startMultiBtn">Начать мультиплеер</button>
+        <button class="modal-btn" id="saveProfileBtn">Сохранить профиль</button>
       </div>
     </div>
   </div>
@@ -50,8 +53,8 @@
   <div id="rulesModal" class="modal hidden">
     <div class="modal-content">
       <div class="modal-close" id="closeRulesModal">✕</div>
-      <p style="font-size:1.25rem;font-weight:800;text-align:center;margin-bottom:0.8rem;">📜 Правила игры</p>
-      <p style="font-size:.95rem;line-height:1.5;margin-top:.4rem;">
+      <p class="modal-heading">📜 Правила игры</p>
+      <p class="rules-text">
       HistoryGuesser — это игра на историческую эрудицию и географию. В каждом раунде вам показывается историческая фотография. 
       Ваша задача — по изображению определить, где была сделана фотография, и в каком году это произошло. 
       Сначала внимательно рассмотрите снимок, затем переключитесь на карту и щёлкните по предполагаемому месту съёмки. 
@@ -70,9 +73,83 @@
   <div id="finalModal" class="modal hidden">
     <div class="modal-content">
       <div class="modal-close" id="closeFinalModal">✕</div>
-      <div style="font-size:3.5rem;text-align:center;">🏆</div>
-      <p id="finalMessage" style="font-size:1.1rem;text-align:center;margin:.8rem 0;"></p>
+      <div class="final-trophy">🏆</div>
+      <p id="finalMessage" class="final-message"></p>
+      <div id="finalLeaderboardOptOut" class="final-leaderboard-optout">
+        <input type="checkbox" id="skipLeaderboardCheckbox">
+        <label for="skipLeaderboardCheckbox">Не добавлять результат в таблицу лидеров</label>
+      </div>
       <div id="finalButtons" class="modal-buttons"></div>
+    </div>
+  </div>
+
+  <div id="lobbyScreen" class="screen lobby-screen hidden">
+    <div class="lobby-card">
+      <div class="lobby-title">Сетевая игра</div>
+      <input id="lobbyPlayerName" class="lobby-input" placeholder="Ваше имя" maxlength="40">
+      <div class="lobby-divider">или войти по коду</div>
+      <input id="lobbyRoomCode" class="lobby-input" placeholder="Код комнаты (8 символов)" maxlength="8" autocomplete="off" spellcheck="false">
+      <div id="lobbyError" class="lobby-error"></div>
+      <div class="lobby-actions">
+        <button id="lobbyCreateBtn" class="menu-btn">Создать комнату</button>
+        <button id="lobbyJoinBtn" class="menu-btn menu-btn-secondary">Войти в комнату</button>
+        <button id="lobbyBackBtn" class="menu-btn menu-btn-secondary">← Назад</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="roomScreen" class="screen room-screen hidden">
+    <div class="room-header">
+      <button id="roomBackLobbyBtn" class="back-btn">← Выйти</button>
+      <div class="game-title">Комната</div>
+      <div class="header-spacer"></div>
+    </div>
+    <div class="room-code-block">
+      <div class="room-code-label">Код комнаты</div>
+      <div class="room-code-row">
+        <div id="roomCodeDisplay" class="room-code-value" title="Выделите или нажмите «Копировать»">——</div>
+        <button type="button" id="roomCodeCopyBtn" class="room-copy-btn" title="Скопировать код">Копировать</button>
+      </div>
+    </div>
+    <div id="roomError" class="room-error hidden"></div>
+    <div id="roomHostSettings" class="room-host-settings hidden">
+      <div class="room-setting-row">
+        <label for="hostTotalRounds">Раундов</label>
+        <input type="number" id="hostTotalRounds" min="1" max="15" value="5">
+      </div>
+      <div class="room-setting-row">
+        <label for="hostTimerDuration">Таймер (сек, макс. 5 мин)</label>
+        <input type="number" id="hostTimerDuration" min="15" max="300" step="15" value="60">
+      </div>
+      <div class="room-setting-row">
+        <label for="hostIsPublic">Публичная комната</label>
+        <input type="checkbox" id="hostIsPublic">
+      </div>
+      <div class="room-setting-row">
+        <label for="hostAllowLateJoin">Позднее подключение</label>
+        <input type="checkbox" id="hostAllowLateJoin" checked>
+      </div>
+    </div>
+    <div class="room-players-wrap">
+      <div class="room-players-title">Игроки</div>
+      <ul id="roomPlayersList" class="room-players-list"></ul>
+    </div>
+    <div class="room-footer">
+      <button id="roomReadyBtn" class="menu-btn">Готов</button>
+      <button id="roomStartBtn" class="menu-btn hidden">Начать игру</button>
+      <button id="roomLeaveBtn" class="menu-btn menu-btn-secondary">Покинуть</button>
+    </div>
+  </div>
+
+  <div id="mpFinalScreen" class="screen mp-final-screen hidden">
+    <h2 class="mp-final-title">Итоги комнаты</h2>
+    <div class="mp-final-table-wrap">
+      <table class="mp-final-table">
+        <thead>
+          <tr><th>#</th><th>Игрок</th><th>Очки</th></tr>
+        </thead>
+        <tbody id="mpFinalBody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -81,6 +158,7 @@
     <div class="menu-buttons">
       <button id="singlePlayerBtn" class="menu-btn">Одиночная игра</button>
       <button id="multiPlayerBtn" class="menu-btn">Многопользовательская игра</button>
+      <button id="profileBtn" class="menu-btn menu-btn-secondary">Профиль игрока</button>
     </div>
     <div class="leaderboard-btn" id="menuLeaderboardBtn">🏆</div>
     <div class="help-btn" id="helpBtn">?</div>
@@ -90,7 +168,7 @@
     <div class="game-header">
       <button id="backFromLeaderboardBtn" class="back-btn">← Назад</button>
       <div class="game-title">Таблица лидеров</div>
-      <div style="width:54px"></div>
+      <div class="header-spacer"></div>
     </div>
     <div class="lb-tabs">
       <button class="lb-tab active" data-tab="overall">Все игроки</button>
@@ -116,14 +194,14 @@
     <div class="game-header">
       <button id="backToMenuBtn" class="back-btn">← Назад</button>
       <div class="game-title">HistoryGuesser</div>
-      <div style="width:54px"></div>
+      <div class="header-spacer"></div>
     </div>
 
     <div id="infoBlock" class="info-block">Определите географическое место, соответствующее историческому фотоматериалу, и укажите наиболее вероятный год съёмки.</div>
 
     <div class="game-layout">
       <div id="mainArea" class="main-area">
-        <div id="toggleView" style="position:absolute;inset:0;">
+        <div id="toggleView" class="toggle-view">
           <div id="mapView" class="view view-hidden"></div>
           <div id="imageView" class="view">
             <div id="imageWrapper" class="image-wrapper">
@@ -139,12 +217,22 @@
 
           <div id="switchViewBtn" class="switch-btn"><span id="switchIcon">🗺️</span></div>
 
+          <span id="roundTimer" class="timer-badge hidden">60</span>
           <span id="roundBadge" class="hud-badge round-badge">Раунд 1/5</span>
           <span id="totalScore" class="hud-badge score-badge">0</span>
         </div>
 
         <div id="splitView" class="split-container hidden">
           <div class="split-columns">
+            <div id="mpRoundLeaderboard" class="mp-round-leaderboard hidden">
+              <div class="mp-round-leaderboard-title">Рейтинг за раунд</div>
+              <table>
+                <thead>
+                  <tr><th>#</th><th>Игрок</th><th>Раунд</th><th>Всего</th></tr>
+                </thead>
+                <tbody id="mpRoundLeaderboardBody"></tbody>
+              </table>
+            </div>
             <div id="splitAnswerBlock" class="split-answer-block">
               <div id="splitAnswerDescription" class="result-description">—</div>
               <div class="result-year-row">

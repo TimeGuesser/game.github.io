@@ -6,7 +6,31 @@
     }
 
 
-    .modal-content {
+    .modal-heading {
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 0.8rem;
+}
+
+.rules-text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-top: 0.4rem;
+}
+
+.final-trophy {
+  font-size: 3.5rem;
+  text-align: center;
+}
+
+.final-message {
+  font-size: 1.1rem;
+  text-align: center;
+  margin: 0.8rem 0;
+}
+
+.modal-content {
       position: relative; width: min(560px, 92vw); background: #fff; border-radius: 20px;
       padding: 1.6rem 1.6rem 1.2rem; box-shadow: 0 16px 32px rgba(0,0,0,.22);
     }

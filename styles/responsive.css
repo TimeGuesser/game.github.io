@@ -90,6 +90,13 @@
       }
     }
 
+@media (max-width: 600px) {
+  .lobby-card { padding: 18px; }
+  .room-code-value { font-size: 1.5rem; }
+  .room-footer { flex-direction: column; }
+  .room-footer .menu-btn { width: 100%; }
+}
+
 @media (min-width: 980px) {
       .split-container { padding: 12px; }
       .split-columns {

@@ -14,6 +14,11 @@
 
 
 
+    .toggle-view {
+      position: absolute;
+      inset: 0;
+    }
+
     .game-layout {
       flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr;
       padding: 0 0 max(10px, env(safe-area-inset-bottom));
