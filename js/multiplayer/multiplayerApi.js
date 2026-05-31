@@ -151,7 +151,39 @@ export async function createRoom(hostName, settings = {}) {
     });
     const roomId = data?.room_id;
     if (!roomId) throw new Error('Некорректный ответ create_game_room');
-    return fetchRoomBundle(roomId);
+    try {
+      return await fetchRoomBundle(roomId);
+    } catch (e) {
+      console.warn('fetchRoomBundle after create failed:', e.message);
+      return {
+        room: {
+          id: roomId,
+          code: data.code,
+          host_client_id: clientId,
+          status: 'lobby',
+          total_rounds: settings.totalRounds ?? 5,
+          timer_duration_sec: settings.timerDuration ?? 60,
+          question_indices: [],
+          current_round: 0,
+          round_started_at: null,
+          created_at: new Date().toISOString()
+        },
+        players: [{
+          id: clientId,
+          room_id: roomId,
+          client_id: clientId,
+          name: hostName,
+          score: 0,
+          ready: false,
+          answered: false,
+          answer_lat: null,
+          answer_lng: null,
+          answer_year: null,
+          last_round_score: 0,
+          joined_at: new Date().toISOString()
+        }]
+      };
+    }
   } catch (error) {
     if (isMissingRpcError(error)) {
       return createRoomLegacy(hostName, settings);
