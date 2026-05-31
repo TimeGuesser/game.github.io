@@ -7,6 +7,16 @@ async function maybeSaveScore(profile, points) {
   await saveLeaderboardEntry(profile, points);
 }
 
+function runAfterSave(profile, points, action) {
+  action?.();
+
+  // Сохранение результата не должно блокировать кнопки финального окна.
+  // Если Supabase/сеть зависнет, игрок всё равно сразу уйдёт в меню или начнёт заново.
+  maybeSaveScore(profile, points).catch((e) => {
+    console.warn('Leaderboard save skipped:', e.message);
+  });
+}
+
 export function showFinishModal({
   message,
   points,
@@ -30,19 +40,17 @@ export function showFinishModal({
   const againBtn = document.createElement('button');
   againBtn.className = 'modal-btn';
   againBtn.textContent = againLabel;
-  againBtn.onclick = async () => {
-    await maybeSaveScore(profile, points);
+  againBtn.onclick = () => {
     modal.classList.add('hidden');
-    onAgain?.();
+    runAfterSave(profile, points, onAgain);
   };
 
   const menuBtn = document.createElement('button');
   menuBtn.className = 'modal-btn';
   menuBtn.textContent = 'Главное меню';
-  menuBtn.onclick = async () => {
-    await maybeSaveScore(profile, points);
+  menuBtn.onclick = () => {
     modal.classList.add('hidden');
-    onMenu?.();
+    runAfterSave(profile, points, onMenu);
   };
 
   finalButtons.append(againBtn, menuBtn);
