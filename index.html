@@ -141,8 +141,8 @@
     </div>
   </div>
 
-  <div id="mpFinalScreen" class="screen mp-final-screen hidden">
-    <h2 class="mp-final-title">Итоги комнаты</h2>
+    <div id="mpFinalScreen" class="screen mp-final-screen hidden">
+      <h2 class="mp-final-title">Итоги комнаты</h2>
     <div class="mp-final-table-wrap">
       <table class="mp-final-table">
         <thead>
@@ -150,6 +150,10 @@
         </thead>
         <tbody id="mpFinalBody"></tbody>
       </table>
+    </div>
+    <div class="mp-final-actions">
+      <button id="mpFinalAgainBtn" class="menu-btn">Новая комната</button>
+      <button id="mpFinalMenuBtn" class="menu-btn menu-btn-secondary">В меню</button>
     </div>
   </div>
 
@@ -256,6 +260,7 @@
                 <div class="score-card"><span>За раунд</span><strong id="splitRoundPoints">0</strong></div>
               </div>
               <button id="splitNextBtn" class="big-btn split-next-btn">➡️ СЛЕДУЮЩИЙ ВОПРОС</button>
+              <button id="hostNextRoundBtn" class="big-btn split-next-btn hidden">Следующий раунд</button>
             </div>
           </div>
         </div>

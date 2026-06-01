@@ -156,9 +156,9 @@ export async function hostEndRound() {
 
 export async function leaveCurrentRoom() {
   const state = getRoomState();
-  const local = getLocalPlayer(state, getClientId());
-  if (state && local) {
-    await leaveRoom(state.roomId, local.id);
+  const clientId = getClientId();
+  if (state && clientId) {
+    await leaveRoom(state.roomId, clientId);
   }
   currentBundle = null;
 }

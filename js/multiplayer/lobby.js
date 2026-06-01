@@ -7,7 +7,9 @@ import {
   showRoom,
   showMenu,
   copyRoomCodeToClipboard,
-  flashCopyButton
+  flashCopyButton,
+  markHostSettingsDirty,
+  clearHostSettingsDirty
 } from './multiplayerUI.js';
 import {
   applyBundle,
@@ -173,6 +175,7 @@ async function onRoomStart() {
     showRoomError('');
     if (startBtn) startBtn.disabled = true;
     await hostStartGame();
+    clearHostSettingsDirty();
     await syncRoomStateNow();
     renderRoomUI();
   } catch (e) {
@@ -206,6 +209,8 @@ function wireLobbyEvents() {
     });
   });
   byId('roomStartBtn')?.addEventListener('click', onRoomStart);
+  byId('hostTotalRounds')?.addEventListener('input', markHostSettingsDirty);
+  byId('hostTimerDuration')?.addEventListener('input', markHostSettingsDirty);
   byId('roomLeaveBtn')?.addEventListener('click', () => onLeaveRoom().catch(console.error));
   byId('roomBackLobbyBtn')?.addEventListener('click', () => onLeaveRoom().catch(console.error));
 

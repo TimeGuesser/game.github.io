@@ -534,7 +534,8 @@ import { getRoomState } from './multiplayer/room.js';
         if (!local) return;
 
         actionBtn.disabled = true;
-        await submitLocalAnswer(local.id, selectedLat, selectedLng, selectedYear);
+        const sent = await submitLocalAnswer(local.id, selectedLat, selectedLng, selectedYear);
+        if (!sent) return;
         markLocalSubmitted();
         questionAnswered = true;
         setInfo('Ответ отправлен. Ожидайте окончания раунда.', 10000);
@@ -699,6 +700,15 @@ import { getRoomState } from './multiplayer/room.js';
         splitViewDiv.classList.add('hidden');
         controlBar.style.display = '';
         byId('mpRoundLeaderboard')?.classList.add('hidden');
+      }
+
+      function disableAnswerSubmit() {
+        actionBtn.disabled = true;
+      }
+
+      function clearMapOverlays() {
+        clearMapGraphics();
+        if (splitMap) splitMap.geoObjects.removeAll();
       }
 
       async function startGame(useSaved = false, mode = 'single') {
@@ -988,6 +998,8 @@ import { getRoomState } from './multiplayer/room.js';
         enterRoomGame,
         showRoomRoundResult,
         exitRoomGame,
+        disableAnswerSubmit,
+        clearMapOverlays,
         submitRoomAnswer: async (playerId) => {
           if (selectedLat == null || selectedLng == null) {
             await submitLocalAnswer(playerId, 55.75, 37.62, selectedYear);

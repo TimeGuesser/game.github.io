@@ -19,24 +19,21 @@ import {
   hideRoundLeaderboard,
   renderMpFinalScreen,
   hideMpFinalScreen,
-  showMenu
+  showMenu,
+  showMpEndButtons
 } from './multiplayerUI.js';
-import { applyBundle, getRoomState, hostAdvanceRound, hostEndRound } from './room.js';
-import { showFinishModal } from '../utils/leaderboardFinish.js';
-import { PLAYER_KEY, loadJSON } from '../storage/storage.js';
+import { applyBundle, getRoomState, hostEndRound } from './room.js';
+import { byId } from '../utils/dom.js';
 
 let activeRoomId = null;
 let roundAdvanceTimer = null;
 let localSubmitted = false;
+let currentRoundQuestion = null;
 
 function getQuestionForRound(state) {
   const idx = state.questionIndices[Math.max(0, state.currentRound - 1)];
   if (idx == null || idx < 0 || idx >= FULL_QUESTIONS.length) return null;
   return FULL_QUESTIONS[idx];
-}
-
-function loadPlayerProfile() {
-  return loadJSON(PLAYER_KEY, null);
 }
 
 async function handleRoomStateChange() {
@@ -54,11 +51,13 @@ async function handleRoomStateChange() {
     hideMpFinalScreen();
     hideRoundLeaderboard();
     localSubmitted = false;
+    byId('hostNextRoundBtn')?.classList.add('hidden');
 
-    const q = getQuestionForRound(state);
-    if (!q) return;
+    currentRoundQuestion = getQuestionForRound(state);
+    if (!currentRoundQuestion) return;
 
-    bridge.enterRoomGame?.(state, q);
+    bridge.clearMapOverlays?.();
+    bridge.enterRoomGame?.(state, currentRoundQuestion);
     showRoundTimer(true);
 
     startTimer(state, {
@@ -68,7 +67,7 @@ async function handleRoomStateChange() {
   } else if (state.status === 'round_result') {
     stopTimer();
     showRoundTimer(false);
-    const q = getQuestionForRound(state);
+    const q = currentRoundQuestion || getQuestionForRound(state);
     if (q) {
       bridge.showRoomRoundResult?.(state, q);
       renderRoundLeaderboard(state.players);
@@ -76,7 +75,7 @@ async function handleRoomStateChange() {
 
     if (isHost(state, getClientId())) {
       clearTimeout(roundAdvanceTimer);
-      roundAdvanceTimer = setTimeout(() => hostAdvanceAfterResult(state), 5000);
+      showNextRoundButton(state);
     }
   } else if (state.status === 'finished') {
     stopTimer();
@@ -90,9 +89,11 @@ async function onTimerExpire(state) {
   const bridge = getGameBridge();
   const local = getLocalPlayer(state, getClientId());
 
+  bridge?.disableAnswerSubmit?.();
+
   if (!localSubmitted && bridge?.submitRoomAnswer) {
-    await bridge.submitRoomAnswer(local.id);
     localSubmitted = true;
+    await bridge.submitRoomAnswer(local.id);
   }
 
   if (isHost(state, getClientId())) {
@@ -104,8 +105,11 @@ async function onTimerExpire(state) {
   }
 }
 
-async function hostAdvanceAfterResult(state) {
+async function hostAdvanceAfterResult() {
   clearTimeout(roundAdvanceTimer);
+  const state = getRoomState();
+  if (!state) return;
+
   const next = state.currentRound + 1;
   if (next > state.totalRounds) {
     await advanceRound(state.roomId, next, state.totalRounds);
@@ -118,6 +122,25 @@ async function hostAdvanceAfterResult(state) {
   applyBundle(bundle.room, bundle.players);
 }
 
+function showNextRoundButton(state) {
+  const btn = byId('hostNextRoundBtn');
+  if (!btn) return;
+  btn.classList.remove('hidden');
+  btn.disabled = false;
+  btn.textContent = state.currentRound >= state.totalRounds ? 'Завершить игру' : 'Следующий раунд';
+  btn.onclick = async () => {
+    btn.disabled = true;
+    btn.classList.add('hidden');
+    try {
+      await hostAdvanceAfterResult();
+    } catch (e) {
+      console.error('hostAdvanceAfterResult:', e);
+      btn.disabled = false;
+      btn.classList.remove('hidden');
+    }
+  };
+}
+
 function showRoomFinal(state) {
   const bridge = getGameBridge();
   bridge?.exitRoomGame?.();
@@ -125,15 +148,7 @@ function showRoomFinal(state) {
   hideMpFinalScreen();
   renderMpFinalScreen(state.players, getClientId());
 
-  const local = getLocalPlayer(state, getClientId());
-  const profile = loadPlayerProfile() || { name: local?.name || 'Игрок' };
-  const maxPoints = state.totalRounds * 1000;
-
-  showFinishModal({
-    message: `Игра в комнате завершена.<br>Ваш результат: <strong>${local?.score ?? 0}</strong> из ${maxPoints}`,
-    points: local?.score ?? 0,
-    profile,
-    againLabel: 'Новая игра',
+  showMpEndButtons({
     onMenu: () => {
       cleanupSync();
       localStorage.removeItem('historyguesser_room_session');
@@ -262,13 +277,15 @@ export function cleanupSync() {
   unsubscribeRoom();
   activeRoomId = null;
   localSubmitted = false;
+  currentRoundQuestion = null;
   hideRoundLeaderboard();
   hideMpFinalScreen();
 }
 
 export async function submitLocalAnswer(playerId, lat, lng, year) {
+  if (localSubmitted) return false;
   const state = getRoomState();
-  const q = getQuestionForRound(state);
+  const q = currentRoundQuestion || getQuestionForRound(state);
   if (!q || lat == null || lng == null) return false;
 
   const local = getLocalPlayer(state, getClientId());

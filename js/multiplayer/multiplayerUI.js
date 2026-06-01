@@ -1,5 +1,15 @@
 import { byId } from '../utils/dom.js';
 
+let hostSettingsDirty = false;
+
+export function markHostSettingsDirty() {
+  hostSettingsDirty = true;
+}
+
+export function clearHostSettingsDirty() {
+  hostSettingsDirty = false;
+}
+
 export function showLobby() {
   byId('menuScreen')?.classList.add('hidden');
   byId('gameScreen')?.classList.add('hidden');
@@ -91,6 +101,8 @@ export function renderHostSettings(isHost, settings) {
 
   if (!isHost) return;
 
+  if (hostSettingsDirty) return;
+
   const rounds = byId('hostTotalRounds');
   const timer = byId('hostTimerDuration');
 
@@ -173,6 +185,13 @@ export function renderMpFinalScreen(players, localClientId) {
 
 export function hideMpFinalScreen() {
   byId('mpFinalScreen')?.classList.add('hidden');
+}
+
+export function showMpEndButtons({ onMenu, onAgain }) {
+  const menuBtn = byId('mpFinalMenuBtn');
+  const againBtn = byId('mpFinalAgainBtn');
+  if (menuBtn) menuBtn.onclick = onMenu;
+  if (againBtn) againBtn.onclick = onAgain;
 }
 
 const TIMER_MIN_SEC = 15;

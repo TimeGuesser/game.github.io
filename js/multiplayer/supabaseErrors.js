@@ -26,6 +26,8 @@ export function humanizeError(error) {
   if (raw.includes('not all ready')) return 'Все игроки должны нажать «Готов».';
   if (raw.includes('room not found')) return 'Комната не найдена. Проверьте код.';
   if (raw.includes('game finished')) return 'Игра в этой комнате уже завершена.';
+  if (raw.includes('room_finished')) return 'Игра в этой комнате уже завершена.';
+  if (raw.includes('host_left')) return 'Хост покинул комнату. Невозможно войти.';
   if (raw.includes('room full')) return 'Комната заполнена (макс. 30 игроков).';
   if (raw.includes('late join')) return 'Позднее подключение в эту комнату запрещено.';
   if (raw.includes('pgrst202') || raw.includes('could not find the function')) {

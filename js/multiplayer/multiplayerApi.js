@@ -547,14 +547,21 @@ export async function submitAnswer(playerId, lat, lng, year, roundScore, totalSc
   });
 }
 
-export async function leaveRoom(roomId, playerId) {
-  await dbOp(requireSupabase().from('room_players').delete().eq('id', playerId));
-  const bundle = await fetchRoomBundle(roomId);
+export async function leaveRoom(roomId, clientId) {
+  try {
+    return await callRpc('player_leave_room', {
+      p_room_id: roomId,
+      p_client_id: clientId
+    });
+  } catch (error) {
+    if (!isMissingRpcError(error)) throwDbError(error, 'Не удалось выйти из комнаты');
+  }
+
+  await dbOp(requireSupabase().from('room_players').delete().eq('room_id', roomId).eq('client_id', clientId));
+  const bundle = await fetchRoomBundle(roomId).catch(() => null);
+  if (!bundle) return null;
   if (bundle.players.length === 0) {
     await dbOp(requireSupabase().from('rooms').delete().eq('id', roomId));
-  } else {
-    // host_client_id больше не связан с playerId (uuid). Хост определяется по client_id.
-    // Переназначение хоста при выходе в этой версии не делаем.
   }
 }
 
