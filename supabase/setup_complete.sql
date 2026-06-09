@@ -110,15 +110,73 @@ create index room_players_joined_idx
 on public.room_players(joined_at);
 
 -- =====================================================
--- DISABLE RLS (VERY IMPORTANT FOR SPEED)
+-- RLS POLICIES
 -- =====================================================
 
-alter table public.rooms disable row level security;
-alter table public.room_players disable row level security;
+alter table public.rooms enable row level security;
+alter table public.room_players enable row level security;
 
 grant usage on schema public to anon, authenticated;
 grant all on public.rooms to anon, authenticated;
 grant all on public.room_players to anon, authenticated;
+
+drop policy if exists "rooms_select_all" on public.rooms;
+create policy "rooms_select_all"
+on public.rooms
+for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "rooms_insert_all" on public.rooms;
+create policy "rooms_insert_all"
+on public.rooms
+for insert
+to anon, authenticated
+with check (true);
+
+drop policy if exists "rooms_update_all" on public.rooms;
+create policy "rooms_update_all"
+on public.rooms
+for update
+to anon, authenticated
+using (true)
+with check (true);
+
+drop policy if exists "rooms_delete_all" on public.rooms;
+create policy "rooms_delete_all"
+on public.rooms
+for delete
+to anon, authenticated
+using (true);
+
+drop policy if exists "room_players_select_all" on public.room_players;
+create policy "room_players_select_all"
+on public.room_players
+for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "room_players_insert_all" on public.room_players;
+create policy "room_players_insert_all"
+on public.room_players
+for insert
+to anon, authenticated
+with check (true);
+
+drop policy if exists "room_players_update_all" on public.room_players;
+create policy "room_players_update_all"
+on public.room_players
+for update
+to anon, authenticated
+using (true)
+with check (true);
+
+drop policy if exists "room_players_delete_all" on public.room_players;
+create policy "room_players_delete_all"
+on public.room_players
+for delete
+to anon, authenticated
+using (true);
 
 -- =====================================================
 -- REALTIME
@@ -218,17 +276,32 @@ security invoker
 as $$
 declare
   v_room_id uuid;
+  v_host_client_id text;
+  v_status text;
   v_count int;
 begin
 
-  select id
-  into v_room_id
+  select id, host_client_id, status
+  into v_room_id, v_host_client_id, v_status
   from public.rooms
   where code = upper(trim(p_code))
   limit 1;
 
   if v_room_id is null then
     raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  if not exists (
+    select 1
+    from public.room_players
+    where room_id = v_room_id
+      and client_id = v_host_client_id
+  ) then
+    raise exception 'HOST_LEFT';
+  end if;
+
+  if v_status = 'finished' then
+    raise exception 'ROOM_FINISHED';
   end if;
 
   select count(*)
@@ -265,6 +338,77 @@ $$;
 grant execute on function public.join_game_room(
   text,
   text,
+  text
+) to anon, authenticated;
+
+-- =====================================================
+-- LEAVE ROOM / TRANSFER HOST
+-- =====================================================
+
+create or replace function public.player_leave_room(
+  p_room_id uuid,
+  p_client_id text
+)
+returns jsonb
+language plpgsql
+security invoker
+as $$
+declare
+  v_host_client_id text;
+  v_player_count int;
+  v_next_host_client_id text;
+begin
+
+  delete from public.room_players
+  where room_id = p_room_id
+    and client_id = p_client_id;
+
+  select count(*)
+  into v_player_count
+  from public.room_players
+  where room_id = p_room_id;
+
+  if v_player_count = 0 then
+    delete from public.rooms
+    where id = p_room_id;
+
+    return jsonb_build_object(
+      'action', 'room_deleted'
+    );
+  end if;
+
+  select host_client_id
+  into v_host_client_id
+  from public.rooms
+  where id = p_room_id;
+
+  if v_host_client_id = p_client_id then
+    select client_id
+    into v_next_host_client_id
+    from public.room_players
+    where room_id = p_room_id
+    order by joined_at asc
+    limit 1;
+
+    update public.rooms
+    set host_client_id = v_next_host_client_id
+    where id = p_room_id;
+
+    return jsonb_build_object(
+      'action', 'host_transferred',
+      'new_host_client_id', v_next_host_client_id
+    );
+  end if;
+
+  return jsonb_build_object(
+    'action', 'player_removed'
+  );
+
+end;
+$$;
+
+grant execute on function public.player_leave_room(
+  uuid,
   text
 ) to anon, authenticated;
 

@@ -2,7 +2,8 @@
 
     .game-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; border-bottom: 1px solid #dbe3ef;
+      padding: clamp(8px, 1.5vh, 12px) 16px; border-bottom: 1px solid #dbe3ef;
+      flex-shrink: 0;
     }
 
 
@@ -21,6 +22,7 @@
 
     .game-layout {
       flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr;
+      grid-template-rows: minmax(0, 1fr) auto;
       padding: 0 0 max(10px, env(safe-area-inset-bottom));
       overflow: hidden;
     }

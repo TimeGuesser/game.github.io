@@ -42,7 +42,8 @@
 
 
     .big-btn {
-      border: none; border-radius: 999px; padding: 11px 14px; font-weight: 800; color: #fff;
+      border: none; border-radius: 999px; padding: clamp(10px, 2vh, 14px) 14px; font-weight: 800; color: #fff;
+      font-size: clamp(0.9rem, 2vh, 1rem);
       background: #1e3a8a; cursor: pointer;
     }
 

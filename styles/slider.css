@@ -1,6 +1,6 @@
 
 
-    .year-slider-area { border: 1px solid #dbe3ef; border-radius: 12px; padding: 10px 12px; background: #f8fafc; }
+    .year-slider-area { border: 1px solid #dbe3ef; border-radius: 12px; padding: clamp(6px, 1.5vh, 10px) 12px; background: #f8fafc; }
 
 
     input[type="range"] { width: 100%; accent-color: #1e3a8a; }

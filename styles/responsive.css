@@ -1,6 +1,6 @@
 @media (min-width: 980px) {
       /* На ПК только одна колонка — mainArea занимает всё, control-bar снизу */
-      .game-layout { grid-template-columns: 1fr; grid-template-rows: 1fr auto; gap: 10px; padding: 8px 14px 14px; }
+      .game-layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; padding: 8px 14px 14px; }
       .main-area { margin-top: 0; border: 1px solid #dbe3ef; border-radius: 18px; }
       .control-bar {
         margin-top: 0; border: 1px solid #dbe3ef; border-radius: 14px;
@@ -32,22 +32,22 @@
     }
 
 @media (max-width: 979px) {
-      .game-header { padding: 8px 10px; }
+      .game-header { padding: clamp(6px, 1.5vh, 8px) 10px; }
       .game-title { font-size: 1rem; }
-      .info-block { padding: 8px 10px 0; font-size: .9rem; min-height: 74px; }
-      .game-layout { padding-bottom: env(safe-area-inset-bottom); }
-      .main-area { margin-top: 4px; min-height: 52vh; }
-      .control-bar { padding: 8px 8px 10px; }
-      .year-slider-area { padding: 8px 10px; }
+      .info-block { padding: clamp(6px, 1.5vh, 8px) 10px 0; font-size: clamp(0.8rem, 2.5vh, 0.9rem); min-height: 0; flex-shrink: 0; }
+      .game-layout { padding-bottom: max(10px, env(safe-area-inset-bottom)); gap: clamp(4px, 1vh, 8px); }
+      .main-area { margin-top: 0; min-height: 0; }
+      .control-bar { padding: clamp(6px, 1.5vh, 8px) 8px clamp(8px, 2vh, 10px); flex-shrink: 0; }
+      .year-slider-area { padding: clamp(6px, 1.5vh, 8px) 10px; }
       .split-container { padding: 6px 0; }
       .split-answer-block { padding: 8px 10px; }
-      .result-description { font-size: .95rem; line-height: 1.25; }
+      .result-description { font-size: clamp(0.85rem, 2vw, 0.95rem); line-height: 1.2; }
       .result-year-row { margin-top: 4px; gap: 6px; }
       .year-chip { padding: 3px 8px; font-size: .86rem; }
       .year-diff { font-size: .86rem; }
       .split-columns {
         grid-template-rows: auto minmax(0, 1fr) max-content minmax(0, 1fr) max-content;
-        gap: 4px;
+        gap: clamp(2px, 1vh, 4px);
       }
       .split-map { min-height: 0; }
       .split-image { min-height: 0; }
@@ -60,12 +60,12 @@
       .split-next-btn { padding: 8px 10px; font-size: .88rem; }
       #gameScreen.result-mode .split-container { padding: 6px 0; }
       #gameScreen.result-mode .split-columns {
-        grid-template-rows: max-content min-content max-content min-content max-content;
-        gap: 4px;
-        align-content: start;
+        grid-template-rows: max-content minmax(0, 1fr) max-content minmax(0, 1fr) max-content;
+        gap: clamp(4px, 1vh, 8px);
+        height: 100%;
       }
-      #gameScreen.result-mode .split-answer-block { padding: 10px 12px; border-radius: 14px; }
-      #gameScreen.result-mode .result-description { font-size: .95rem; line-height: 1.2; }
+      #gameScreen.result-mode .split-answer-block { padding: clamp(6px, 1.5vh, 10px) 12px; border-radius: 14px; }
+      #gameScreen.result-mode .result-description { font-size: clamp(0.85rem, 2.5vh, 1rem); line-height: 1.2; }
       #gameScreen.result-mode .result-year-row { margin-top: 4px; gap: 6px; }
       #gameScreen.result-mode .year-chip { padding: 4px 10px; font-size: .9rem; border-width: 1px; }
       #gameScreen.result-mode .year-diff { font-size: .9rem; }
@@ -79,14 +79,14 @@
         min-height: 0;
         height: auto;
       }
-      #gameScreen.result-mode .split-right-controls { gap: 10px; }
-      #gameScreen.result-mode .split-score-grid { gap: 10px; }
-      #gameScreen.result-mode .score-card { padding: 10px 9px; border-radius: 18px; }
-      #gameScreen.result-mode .score-card span { font-size: .9rem; }
-      #gameScreen.result-mode .score-card strong { font-size: 1.2rem; }
+      #gameScreen.result-mode .split-right-controls { gap: clamp(6px, 1.5vh, 10px); }
+      #gameScreen.result-mode .split-score-grid { gap: clamp(6px, 1vh, 10px); }
+      #gameScreen.result-mode .score-card { padding: clamp(6px, 1vh, 10px) 9px; border-radius: 18px; }
+      #gameScreen.result-mode .score-card span { font-size: clamp(0.7rem, 2vh, 0.9rem); }
+      #gameScreen.result-mode .score-card strong { font-size: clamp(1rem, 2.5vh, 1.2rem); }
       #gameScreen.result-mode .split-next-btn {
-        padding: 10px 12px;
-        font-size: .95rem;
+        padding: clamp(8px, 1.5vh, 12px);
+        font-size: clamp(0.85rem, 2vh, 0.95rem);
       }
     }
 
@@ -101,7 +101,7 @@
       .split-container { padding: 12px; }
       .split-columns {
         gap: 10px;
-        grid-template-rows: auto minmax(180px, 1fr) max-content minmax(150px, 1fr) max-content;
+        grid-template-rows: max-content minmax(0, 1fr) max-content minmax(0, 1fr) max-content;
       }
       .split-right-controls { max-width: 760px; width: 100%; margin: 0 auto; }
     }
